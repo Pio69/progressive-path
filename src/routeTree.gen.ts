@@ -9,8 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RegistroRouteImport } from './routes/registro'
+import { Route as RefeicoesRouteImport } from './routes/refeicoes'
+import { Route as MetasRouteImport } from './routes/metas'
+import { Route as MedidasRouteImport } from './routes/medidas'
+import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as EvolucaoRouteImport } from './routes/evolucao'
 import { Route as IndexRouteImport } from './routes/index'
 
+const RegistroRoute = RegistroRouteImport.update({
+  id: '/registro',
+  path: '/registro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefeicoesRoute = RefeicoesRouteImport.update({
+  id: '/refeicoes',
+  path: '/refeicoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MetasRoute = MetasRouteImport.update({
+  id: '/metas',
+  path: '/metas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MedidasRoute = MedidasRouteImport.update({
+  id: '/medidas',
+  path: '/medidas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsRoute = InsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvolucaoRoute = EvolucaoRouteImport.update({
+  id: '/evolucao',
+  path: '/evolucao',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +55,116 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/evolucao': typeof EvolucaoRoute
+  '/insights': typeof InsightsRoute
+  '/medidas': typeof MedidasRoute
+  '/metas': typeof MetasRoute
+  '/refeicoes': typeof RefeicoesRoute
+  '/registro': typeof RegistroRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/evolucao': typeof EvolucaoRoute
+  '/insights': typeof InsightsRoute
+  '/medidas': typeof MedidasRoute
+  '/metas': typeof MetasRoute
+  '/refeicoes': typeof RefeicoesRoute
+  '/registro': typeof RegistroRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/evolucao': typeof EvolucaoRoute
+  '/insights': typeof InsightsRoute
+  '/medidas': typeof MedidasRoute
+  '/metas': typeof MetasRoute
+  '/refeicoes': typeof RefeicoesRoute
+  '/registro': typeof RegistroRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/evolucao'
+    | '/insights'
+    | '/medidas'
+    | '/metas'
+    | '/refeicoes'
+    | '/registro'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/evolucao'
+    | '/insights'
+    | '/medidas'
+    | '/metas'
+    | '/refeicoes'
+    | '/registro'
+  id:
+    | '__root__'
+    | '/'
+    | '/evolucao'
+    | '/insights'
+    | '/medidas'
+    | '/metas'
+    | '/refeicoes'
+    | '/registro'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EvolucaoRoute: typeof EvolucaoRoute
+  InsightsRoute: typeof InsightsRoute
+  MedidasRoute: typeof MedidasRoute
+  MetasRoute: typeof MetasRoute
+  RefeicoesRoute: typeof RefeicoesRoute
+  RegistroRoute: typeof RegistroRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/registro': {
+      id: '/registro'
+      path: '/registro'
+      fullPath: '/registro'
+      preLoaderRoute: typeof RegistroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refeicoes': {
+      id: '/refeicoes'
+      path: '/refeicoes'
+      fullPath: '/refeicoes'
+      preLoaderRoute: typeof RefeicoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/metas': {
+      id: '/metas'
+      path: '/metas'
+      fullPath: '/metas'
+      preLoaderRoute: typeof MetasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/medidas': {
+      id: '/medidas'
+      path: '/medidas'
+      fullPath: '/medidas'
+      preLoaderRoute: typeof MedidasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights': {
+      id: '/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof InsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evolucao': {
+      id: '/evolucao'
+      path: '/evolucao'
+      fullPath: '/evolucao'
+      preLoaderRoute: typeof EvolucaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +177,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EvolucaoRoute: EvolucaoRoute,
+  InsightsRoute: InsightsRoute,
+  MedidasRoute: MedidasRoute,
+  MetasRoute: MetasRoute,
+  RefeicoesRoute: RefeicoesRoute,
+  RegistroRoute: RegistroRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
