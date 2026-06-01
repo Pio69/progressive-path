@@ -69,6 +69,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      attachRuntimeEnv(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
@@ -78,3 +79,14 @@ export default {
     }
   },
 };
+
+function attachRuntimeEnv(env: unknown) {
+  if (!env || typeof env !== "object" || !("process" in globalThis)) return;
+
+  const runtimeEnv = env as Record<string, unknown>;
+  for (const [key, value] of Object.entries(runtimeEnv)) {
+    if (typeof value === "string" && process.env[key] == null) {
+      process.env[key] = value;
+    }
+  }
+}
