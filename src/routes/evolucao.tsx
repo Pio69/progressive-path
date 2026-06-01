@@ -1,121 +1,117 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { DAILY_LOGS, weeklyAvgWeight } from "@/lib/mock-data";
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profile";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { toast } from "sonner";
+import { todayIso } from "@/lib/dallas";
 
 export const Route = createFileRoute("/evolucao")({
-  head: () => ({ meta: [{ title: "Evolução — Cutting Tracker" }] }),
+  head: () => ({ meta: [{ title: "Evolução — Projeto Dallas" }] }),
   component: Evolucao,
 });
 
-const tooltipStyle = {
-  contentStyle: { background: "oklch(0.21 0.02 240)", border: "1px solid oklch(0.3 0.02 240)", borderRadius: 12, fontSize: 12 },
-  labelStyle: { color: "oklch(0.68 0.02 240)" },
-};
+type WH = { id: string; date: string; weight_kg: number };
 
 function Evolucao() {
-  const data = DAILY_LOGS.map((d) => ({ ...d, label: d.date.slice(5) }));
-  const trainData = data.map((d) => ({ label: d.label, treino: d.trained ? 1 : 0, cardio: d.cardio ? 1 : 0 }));
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const qc = useQueryClient();
+  const [date, setDate] = useState(todayIso());
+  const [weight, setWeight] = useState<number>(profile ? Number(profile.current_weight_kg) : 0);
+
+  const { data: history = [] } = useQuery({
+    queryKey: ["weight_history", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("weight_history").select("*").order("date", { ascending: false });
+      if (error) throw error;
+      return data as WH[];
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("weight_history")
+        .upsert({ user_id: user!.id, date, weight_kg: weight }, { onConflict: "user_id,date" });
+      if (error) throw error;
+      await supabase.from("profiles").update({ current_weight_kg: weight }).eq("user_id", user!.id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["weight_history"] });
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Pesagem registrada");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("weight_history").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["weight_history"] }),
+  });
+
+  const max = Math.max(...history.map((h) => Number(h.weight_kg)), 0);
+  const min = Math.min(...history.map((h) => Number(h.weight_kg)), max);
+  const range = Math.max(1, max - min);
 
   return (
     <AppShell>
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Evolução</h1>
-        <p className="text-sm text-muted-foreground">Últimos 30 dias de acompanhamento</p>
+        <p className="text-sm text-muted-foreground">Histórico de pesagens.</p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <ChartCard title="Peso ao longo do tempo" subtitle="kg por dia">
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={data}>
-              <defs>
-                <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="oklch(0.65 0.18 230)" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="oklch(0.65 0.18 230)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="oklch(0.3 0.02 240)" strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <YAxis stroke="oklch(0.68 0.02 240)" fontSize={11} domain={["dataMin - 1", "dataMax + 1"]} />
-              <Tooltip {...tooltipStyle} />
-              <Area type="monotone" dataKey="weight" stroke="oklch(0.65 0.18 230)" fill="url(#g1)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
+      <section className="mb-6 rounded-2xl border border-border bg-card p-5">
+        <h2 className="mb-3 text-sm font-semibold">Registrar pesagem</h2>
+        <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="flex flex-wrap items-end gap-3">
+          <div><Label className="text-xs">Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+          <div><Label className="text-xs">Peso (kg)</Label><Input type="number" step="0.1" value={weight} onChange={(e) => setWeight(+e.target.value)} required /></div>
+          <Button type="submit" disabled={save.isPending}>Salvar</Button>
+        </form>
+      </section>
 
-        <ChartCard title="Média semanal" subtitle="tendência real do cutting">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={weeklyAvgWeight()}>
-              <CartesianGrid stroke="oklch(0.3 0.02 240)" strokeDasharray="3 3" />
-              <XAxis dataKey="week" stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <YAxis stroke="oklch(0.68 0.02 240)" fontSize={11} domain={["dataMin - 0.5", "dataMax + 0.5"]} />
-              <Tooltip {...tooltipStyle} />
-              <Line type="monotone" dataKey="weight" stroke="oklch(0.72 0.17 160)" strokeWidth={3} dot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
+      {history.length > 0 && (
+        <section className="mb-6 rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-3 text-sm font-semibold">Tendência</h2>
+          <div className="flex h-32 items-end gap-1">
+            {[...history].reverse().map((h) => {
+              const v = Number(h.weight_kg);
+              const pct = ((v - min) / range) * 100;
+              return (
+                <div key={h.id} className="flex flex-1 flex-col items-center justify-end" title={`${h.date}: ${v}kg`}>
+                  <div className="w-full rounded-t bg-primary/70" style={{ height: `${20 + pct * 0.8}%` }} />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+            <span>{min} kg</span><span>{max} kg</span>
+          </div>
+        </section>
+      )}
 
-        <ChartCard title="Calorias por dia" subtitle="meta 2000 kcal">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={data}>
-              <CartesianGrid stroke="oklch(0.3 0.02 240)" strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <YAxis stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="calories" fill="oklch(0.78 0.16 75)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Proteína por dia" subtitle="meta 160–190g">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={data}>
-              <CartesianGrid stroke="oklch(0.3 0.02 240)" strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <YAxis stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="protein" fill="oklch(0.72 0.17 160)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Água por dia" subtitle="meta 3,5–4L">
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={data}>
-              <CartesianGrid stroke="oklch(0.3 0.02 240)" strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <YAxis stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <Tooltip {...tooltipStyle} />
-              <Area type="monotone" dataKey="water" stroke="oklch(0.65 0.18 230)" fill="oklch(0.65 0.18 230)" fillOpacity={0.3} strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Frequência treino & cardio" subtitle="últimos 30 dias">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={trainData}>
-              <CartesianGrid stroke="oklch(0.3 0.02 240)" strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke="oklch(0.68 0.02 240)" fontSize={11} />
-              <YAxis stroke="oklch(0.68 0.02 240)" fontSize={11} hide />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="treino" stackId="a" fill="oklch(0.65 0.18 230)" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="cardio" stackId="a" fill="oklch(0.72 0.17 160)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-muted-foreground">Registros</h2>
+        {history.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">Sem pesagens registradas.</div>
+        ) : (
+          history.map((h) => (
+            <div key={h.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+              <div className="text-sm">{new Date(h.date + "T00:00").toLocaleDateString("pt-BR")}</div>
+              <div className="flex items-center gap-3">
+                <div className="text-lg font-semibold">{Number(h.weight_kg)} kg</div>
+                <Button size="sm" variant="ghost" onClick={() => del.mutate(h.id)}>Excluir</Button>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
     </AppShell>
-  );
-}
-
-function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-      </div>
-      {children}
-    </div>
   );
 }
