@@ -63,10 +63,24 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div className="mt-auto rounded-2xl border border-border bg-card p-4">
-          <div className="text-xs text-muted-foreground">Streak</div>
-          <div className="mt-1 text-2xl font-semibold">12 dias</div>
-          <div className="mt-1 text-xs text-accent">Mantém o foco 🔥</div>
+        <div className="mt-auto space-y-3">
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground">Streak</div>
+            <div className="mt-1 text-2xl font-semibold">12 dias</div>
+            <div className="mt-1 text-xs text-accent">Mantém o foco 🔥</div>
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card/40 px-3 py-2">
+            <div className="truncate text-xs text-muted-foreground" title={user.email ?? ""}>
+              {user.email}
+            </div>
+            <button
+              onClick={() => signOut()}
+              className="flex items-center gap-1 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -78,7 +92,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <span className="text-sm font-semibold">Cutting Tracker</span>
         </div>
-        <div className="text-xs text-muted-foreground">Streak 12d</div>
+        <button
+          onClick={() => signOut()}
+          className="flex items-center gap-1 rounded-md p-1.5 text-xs text-muted-foreground hover:text-foreground"
+          aria-label="Sair"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
       </header>
 
       <main className="pb-24 lg:ml-64 lg:pb-8">
