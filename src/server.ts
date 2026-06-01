@@ -135,7 +135,7 @@ async function handleApiRequest(request: Request, env: unknown) {
     if (!apiKey) {
       return Response.json({ error: "GEMINI_API_KEY nao configurada" }, { status: 500 });
     }
-    const model = runtimeEnv.GEMINI_MODEL || "gemini-3.5-flash";
+    const model = runtimeEnv.GEMINI_MODEL || "gemini-2.5-flash";
 
     const body = (await request.json()) as EstimateRequest;
     const items = Array.isArray(body.items) ? body.items.filter((item) => item.id && item.name) : [];

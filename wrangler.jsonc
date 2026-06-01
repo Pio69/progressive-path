@@ -5,6 +5,6 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
   "vars": {
-    "GEMINI_MODEL": "gemini-3.5-flash"
+    "GEMINI_MODEL": "gemini-2.5-flash"
   },
 }
