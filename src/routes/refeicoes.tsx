@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { MANUAL_MEAL_ITEM_FOOD_NAME, calcMacros, sumMacros, todayIso, type Meal, type MealItem } from "@/lib/dallas";
+import { calcMacros, sumMacros, todayIso, type Meal, type MealItem } from "@/lib/dallas";
 
 export const Route = createFileRoute("/refeicoes")({
   head: () => ({ meta: [{ title: "Refeicoes - Projeto Dallas" }] }),
@@ -50,12 +50,11 @@ function Refeicoes() {
 
       const items = parseMealItems(m.itemsText);
       if (items.length > 0) {
-        const manualFoodId = await getManualFoodId(user!.id);
         const { error: itemsError } = await supabase.from("meal_items").insert(
           items.map((item) => ({
             user_id: user!.id,
             meal_id: data.id,
-            food_id: manualFoodId,
+            food_id: null,
             quantity_g: item.grams,
             food_name: item.name,
             calories_per_100g: 0,
@@ -85,12 +84,11 @@ function Refeicoes() {
     mutationFn: async (i: { meal_id: string; itemsText: string }) => {
       const items = parseMealItems(i.itemsText);
       if (items.length === 0) throw new Error("Digite pelo menos um item");
-      const manualFoodId = await getManualFoodId(user!.id);
       const { error } = await supabase.from("meal_items").insert(
         items.map((item) => ({
           user_id: user!.id,
           meal_id: i.meal_id,
-          food_id: manualFoodId,
+          food_id: null,
           quantity_g: item.grams,
           food_name: item.name,
           calories_per_100g: 0,
@@ -245,35 +243,6 @@ function parseMealItems(text: string) {
       return { grams: Number(match[1].replace(",", ".")), name: match[2].trim() };
     })
     .filter((item) => item.name.length > 0);
-}
-
-async function getManualFoodId(userId: string) {
-  const { data: existing, error: findError } = await supabase
-    .from("foods")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("name", MANUAL_MEAL_ITEM_FOOD_NAME)
-    .limit(1)
-    .maybeSingle();
-
-  if (findError) throw findError;
-  if (existing) return existing.id;
-
-  const { data, error } = await supabase
-    .from("foods")
-    .insert({
-      user_id: userId,
-      name: MANUAL_MEAL_ITEM_FOOD_NAME,
-      calories_per_100g: 0,
-      protein_per_100g: 0,
-      carbs_per_100g: 0,
-      fat_per_100g: 0,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw error;
-  return data.id;
 }
 
 function Total({ label, value, unit }: { label: string; value: number; unit: string }) {

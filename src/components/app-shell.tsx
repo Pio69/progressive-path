@@ -1,5 +1,5 @@
 import { Link, useLocation, Navigate } from "@tanstack/react-router";
-import { Activity, Home, Utensils, LineChart, Target, LogOut, ClipboardList, Sparkles } from "lucide-react";
+import { Activity, Home, LineChart, Target, LogOut, ClipboardList, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -7,8 +7,7 @@ import { useProfile } from "@/hooks/use-profile";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
-  { to: "/refeicoes", label: "Refeições", icon: Utensils },
-  { to: "/registro", label: "Registro", icon: ClipboardList },
+  { to: "/registro", label: "Hoje", icon: ClipboardList },
   { to: "/evolucao", label: "Evolução", icon: LineChart },
   { to: "/insights", label: "Insights", icon: Sparkles },
   { to: "/metas", label: "Metas", icon: Target },
