@@ -13,7 +13,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,6 +48,22 @@ function LoginPage() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast.error("Digite seu email primeiro.");
+      return;
+    }
+
+    setSubmitting(true);
+    const { error } = await resetPassword(email);
+    setSubmitting(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Enviamos um link para redefinir sua senha.");
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
@@ -78,6 +94,14 @@ function LoginPage() {
                   <Label htmlFor="signin-password">Senha</Label>
                   <Input id="signin-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
+                <button
+                  type="button"
+                  className="text-sm text-primary underline-offset-4 hover:underline"
+                  onClick={handleResetPassword}
+                  disabled={submitting}
+                >
+                  Esqueci minha senha
+                </button>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? "Entrando..." : "Entrar"}
                 </Button>
