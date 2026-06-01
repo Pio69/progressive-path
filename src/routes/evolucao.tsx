@@ -61,9 +61,24 @@ function Evolucao() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["weight_history"] }),
   });
 
-  const max = Math.max(...history.map((h) => Number(h.weight_kg)), 0);
-  const min = Math.min(...history.map((h) => Number(h.weight_kg)), max);
+  const trendData = history
+    .map((h) => ({
+      ...h,
+      weight: Number(h.weight_kg),
+      timestamp: new Date(`${h.measured_at}T00:00`).getTime(),
+    }))
+    .filter((h) => Number.isFinite(h.weight) && Number.isFinite(h.timestamp))
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  const max = Math.max(...trendData.map((h) => h.weight), 0);
+  const min = Math.min(...trendData.map((h) => h.weight), max);
   const range = Math.max(1, max - min);
+  const points = trendData.map((h, index) => {
+    const x = trendData.length === 1 ? 50 : (index / (trendData.length - 1)) * 100;
+    const y = 90 - ((h.weight - min) / range) * 70;
+    return { ...h, x, y };
+  });
+  const linePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
     <AppShell>
@@ -81,22 +96,29 @@ function Evolucao() {
         </form>
       </section>
 
-      {history.length > 0 && (
+      {points.length > 0 && (
         <section className="mb-6 rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-3 text-sm font-semibold">Tendencia</h2>
-          <div className="flex h-32 items-end gap-1">
-            {[...history].reverse().map((h) => {
-              const v = Number(h.weight_kg);
-              const pct = ((v - min) / range) * 100;
-              return (
-                <div key={h.id} className="flex flex-1 flex-col items-center justify-end" title={`${h.measured_at}: ${v}kg`}>
-                  <div className="w-full rounded-t bg-primary/70" style={{ height: `${20 + pct * 0.8}%` }} />
-                </div>
-              );
-            })}
+          <div className="h-40 rounded-xl bg-muted/30 p-3">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full overflow-visible">
+              <line x1="0" y1="90" x2="100" y2="90" className="stroke-border" strokeWidth="1" />
+              <line x1="0" y1="20" x2="100" y2="20" className="stroke-border" strokeWidth="1" strokeDasharray="3 3" />
+              {points.length === 1 ? (
+                <line x1="0" y1={points[0].y} x2="100" y2={points[0].y} className="stroke-primary/50" strokeWidth="2" />
+              ) : (
+                <polyline points={linePoints} fill="none" className="stroke-primary" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              )}
+              {points.map((p) => (
+                <circle key={p.id} cx={p.x} cy={p.y} r="2.5" className="fill-primary" />
+              ))}
+            </svg>
           </div>
           <div className="mt-2 flex justify-between text-xs text-muted-foreground">
             <span>{min} kg</span><span>{max} kg</span>
+          </div>
+          <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+            <span>{new Date(points[0].measured_at + "T00:00").toLocaleDateString("pt-BR")}</span>
+            <span>{new Date(points[points.length - 1].measured_at + "T00:00").toLocaleDateString("pt-BR")}</span>
           </div>
         </section>
       )}
