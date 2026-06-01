@@ -2,12 +2,10 @@
 
 export type Profile = {
   id: string;
-  user_id: string;
-  name: string;
-  height_cm: number;
-  current_weight_kg: number;
-  goal_weight_kg: number;
-  goal: string;
+  name: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  goal: string | null;
 };
 
 export type DailyGoals = {
@@ -23,39 +21,42 @@ export type Food = {
   id: string;
   user_id: string;
   name: string;
-  brand: string | null;
-  kcal_100g: number;
-  protein_100g: number;
-  carbs_100g: number;
-  fat_100g: number;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
 };
 
 export type Meal = {
   id: string;
   user_id: string;
-  date: string;
-  name: string;
-  time: string | null;
-  notes: string | null;
+  meal_date: string;
+  meal_type: string;
 };
 
 export type MealItem = {
   id: string;
+  user_id: string;
   meal_id: string;
   food_id: string;
-  grams: number;
-  foods?: Food;
+  quantity_g: number;
+  food_name: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  foods: Food;
 };
 
 export type Macros = { kcal: number; protein: number; carbs: number; fat: number };
 
-export function calcMacros(food: Pick<Food, "kcal_100g" | "protein_100g" | "carbs_100g" | "fat_100g">, grams: number): Macros {
+export function calcMacros(food: Pick<Food, "calories_per_100g" | "protein_per_100g" | "carbs_per_100g" | "fat_per_100g">, grams: number): Macros {
   const f = grams / 100;
   return {
-    kcal: +(Number(food.kcal_100g) * f).toFixed(1),
-    protein: +(Number(food.protein_100g) * f).toFixed(1),
-    carbs: +(Number(food.carbs_100g) * f).toFixed(1),
-    fat: +(Number(food.fat_100g) * f).toFixed(1),
+    kcal: +(Number(food.calories_per_100g) * f).toFixed(1),
+    protein: +(Number(food.protein_per_100g) * f).toFixed(1),
+    carbs: +(Number(food.carbs_per_100g) * f).toFixed(1),
+    fat: +(Number(food.fat_per_100g) * f).toFixed(1),
   };
 }
 

@@ -7,29 +7,33 @@ import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { todayIso } from "@/lib/dallas";
 
 export const Route = createFileRoute("/evolucao")({
-  head: () => ({ meta: [{ title: "Evolução — Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Evolucao - Projeto Dallas" }] }),
   component: Evolucao,
 });
 
-type WH = { id: string; date: string; weight_kg: number };
+type WH = { id: string; measured_at: string; weight_kg: number };
 
 function Evolucao() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const qc = useQueryClient();
   const [date, setDate] = useState(todayIso());
-  const [weight, setWeight] = useState<number>(profile ? Number(profile.current_weight_kg) : 0);
+  const [weight, setWeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (profile?.weight_kg != null) setWeight(Number(profile.weight_kg));
+  }, [profile?.weight_kg]);
 
   const { data: history = [] } = useQuery({
     queryKey: ["weight_history", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase.from("weight_history").select("*").order("date", { ascending: false });
+      const { data, error } = await supabase.from("weight_history").select("*").order("measured_at", { ascending: false });
       if (error) throw error;
       return data as WH[];
     },
@@ -39,9 +43,10 @@ function Evolucao() {
     mutationFn: async () => {
       const { error } = await supabase
         .from("weight_history")
-        .upsert({ user_id: user!.id, date, weight_kg: weight }, { onConflict: "user_id,date" });
+        .insert({ user_id: user!.id, measured_at: date, weight_kg: weight });
       if (error) throw error;
-      await supabase.from("profiles").update({ current_weight_kg: weight }).eq("user_id", user!.id);
+      const { error: profileError } = await supabase.from("profiles").update({ weight_kg: weight }).eq("id", user!.id);
+      if (profileError) throw profileError;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["weight_history"] });
@@ -63,8 +68,8 @@ function Evolucao() {
   return (
     <AppShell>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Evolução</h1>
-        <p className="text-sm text-muted-foreground">Histórico de pesagens.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Evolucao</h1>
+        <p className="text-sm text-muted-foreground">Historico de pesagens.</p>
       </header>
 
       <section className="mb-6 rounded-2xl border border-border bg-card p-5">
@@ -78,13 +83,13 @@ function Evolucao() {
 
       {history.length > 0 && (
         <section className="mb-6 rounded-2xl border border-border bg-card p-5">
-          <h2 className="mb-3 text-sm font-semibold">Tendência</h2>
+          <h2 className="mb-3 text-sm font-semibold">Tendencia</h2>
           <div className="flex h-32 items-end gap-1">
             {[...history].reverse().map((h) => {
               const v = Number(h.weight_kg);
               const pct = ((v - min) / range) * 100;
               return (
-                <div key={h.id} className="flex flex-1 flex-col items-center justify-end" title={`${h.date}: ${v}kg`}>
+                <div key={h.id} className="flex flex-1 flex-col items-center justify-end" title={`${h.measured_at}: ${v}kg`}>
                   <div className="w-full rounded-t bg-primary/70" style={{ height: `${20 + pct * 0.8}%` }} />
                 </div>
               );
@@ -103,7 +108,7 @@ function Evolucao() {
         ) : (
           history.map((h) => (
             <div key={h.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
-              <div className="text-sm">{new Date(h.date + "T00:00").toLocaleDateString("pt-BR")}</div>
+              <div className="text-sm">{new Date(h.measured_at + "T00:00").toLocaleDateString("pt-BR")}</div>
               <div className="flex items-center gap-3">
                 <div className="text-lg font-semibold">{Number(h.weight_kg)} kg</div>
                 <Button size="sm" variant="ghost" onClick={() => del.mutate(h.id)}>Excluir</Button>

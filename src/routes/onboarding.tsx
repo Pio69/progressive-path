@@ -25,8 +25,7 @@ function Onboarding() {
   const [form, setForm] = useState({
     name: "",
     height_cm: 183,
-    current_weight_kg: 109,
-    goal_weight_kg: 98,
+    weight_kg: 109,
     goal: "cutting",
     calories: 2200,
     protein_g: 180,
@@ -47,11 +46,10 @@ function Onboarding() {
     setSaving(true);
     try {
       const { error: pErr } = await supabase.from("profiles").insert({
-        user_id: user.id,
+        id: user.id,
         name: form.name,
         height_cm: form.height_cm,
-        current_weight_kg: form.current_weight_kg,
-        goal_weight_kg: form.goal_weight_kg,
+        weight_kg: form.weight_kg,
         goal: form.goal,
       });
       if (pErr) throw pErr;
@@ -67,8 +65,8 @@ function Onboarding() {
 
       await supabase.from("weight_history").insert({
         user_id: user.id,
-        date: todayIso(),
-        weight_kg: form.current_weight_kg,
+        measured_at: todayIso(),
+        weight_kg: form.weight_kg,
       });
 
       await qc.invalidateQueries();
@@ -96,18 +94,14 @@ function Onboarding() {
               <Label>Nome</Label>
               <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Seu nome" />
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Altura (cm)</Label>
                 <Input type="number" step="0.1" required value={form.height_cm} onChange={(e) => setForm({ ...form, height_cm: +e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label>Peso atual (kg)</Label>
-                <Input type="number" step="0.1" required value={form.current_weight_kg} onChange={(e) => setForm({ ...form, current_weight_kg: +e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Peso meta (kg)</Label>
-                <Input type="number" step="0.1" required value={form.goal_weight_kg} onChange={(e) => setForm({ ...form, goal_weight_kg: +e.target.value })} />
+                <Input type="number" step="0.1" required value={form.weight_kg} onChange={(e) => setForm({ ...form, weight_kg: +e.target.value })} />
               </div>
             </div>
             <div className="space-y-1.5">

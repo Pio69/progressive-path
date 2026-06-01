@@ -13,8 +13,8 @@ import { calcMacros, sumMacros, todayIso, type Food, type Meal, type MealItem } 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Projeto Dallas — Dashboard" },
-      { name: "description", content: "Acompanhe calorias, macros e evolução do seu cutting." },
+      { title: "Projeto Dallas - Dashboard" },
+      { name: "description", content: "Acompanhe calorias, macros e evolucao do seu cutting." },
     ],
   }),
   component: Home,
@@ -32,22 +32,20 @@ function Home() {
       const { data, error } = await supabase
         .from("meals")
         .select("*, meal_items(*, foods(*))")
-        .eq("date", today);
+        .eq("meal_date", today);
       if (error) throw error;
       return data as (Meal & { meal_items: (MealItem & { foods: Food })[] })[];
     },
   });
 
-  const [greet, setGreet] = useState("Olá");
+  const [greet, setGreet] = useState("Ola");
   useEffect(() => {
     const h = new Date().getHours();
     setGreet(h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite");
   }, []);
 
-  const totals = sumMacros(meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it.foods, Number(it.grams)))));
-
-  const lost = profile ? +(Number(profile.current_weight_kg) - Number(profile.current_weight_kg)).toFixed(1) : 0;
-  const remaining = profile ? +(Number(profile.current_weight_kg) - Number(profile.goal_weight_kg)).toFixed(1) : 0;
+  const totals = sumMacros(meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it.foods, Number(it.quantity_g)))));
+  const weight = profile?.weight_kg == null ? null : Number(profile.weight_kg);
 
   return (
     <AppShell>
@@ -55,13 +53,11 @@ function Home() {
         <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/15 via-card to-accent/10 p-6 md:p-8">
           <div className="text-sm text-muted-foreground">{greet}, {profile?.name}</div>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
-            {remaining > 0 ? `Mais ${remaining.toFixed(1)} kg até a meta.` : "Você atingiu sua meta!"}
+            {weight ? `Peso atual: ${weight.toFixed(1)} kg` : "Acompanhe suas metas do dia."}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Peso atual {profile?.current_weight_kg} kg · Meta {profile?.goal_weight_kg} kg
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Objetivo: {profile?.goal ?? "cutting"}</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="rounded-xl"><Link to="/refeicoes"><Plus className="mr-2 h-4 w-4" />Adicionar refeição</Link></Button>
+            <Button asChild size="lg" className="rounded-xl"><Link to="/refeicoes"><Plus className="mr-2 h-4 w-4" />Adicionar refeicao</Link></Button>
             <Button asChild size="lg" variant="secondary" className="rounded-xl"><Link to="/alimentos"><Apple className="mr-2 h-4 w-4" />Meus alimentos</Link></Button>
           </div>
         </section>
@@ -69,7 +65,7 @@ function Home() {
         {goals ? (
           <section className="grid gap-3 md:grid-cols-2">
             <MacroCard label="Calorias" current={totals.kcal} goal={goals.calories} unit="kcal" icon={Flame} />
-            <MacroCard label="Proteína" current={totals.protein} goal={goals.protein_g} unit="g" icon={Beef} />
+            <MacroCard label="Proteina" current={totals.protein} goal={goals.protein_g} unit="g" icon={Beef} />
             <MacroCard label="Carboidratos" current={totals.carbs} goal={goals.carbs_g} unit="g" />
             <MacroCard label="Gorduras" current={totals.fat} goal={goals.fat_g} unit="g" />
           </section>
@@ -78,9 +74,9 @@ function Home() {
         )}
 
         <section className="grid gap-3 md:grid-cols-3">
-          <QuickLink to="/refeicoes" icon={Utensils} label="Refeições do dia" hint={`${meals.length} registrada${meals.length === 1 ? "" : "s"}`} />
-          <QuickLink to="/alimentos" icon={Apple} label="Alimentos" hint="Catálogo pessoal" />
-          <QuickLink to="/evolucao" icon={LineChart} label="Evolução" hint="Histórico de peso" />
+          <QuickLink to="/refeicoes" icon={Utensils} label="Refeicoes do dia" hint={`${meals.length} registrada${meals.length === 1 ? "" : "s"}`} />
+          <QuickLink to="/alimentos" icon={Apple} label="Alimentos" hint="Catalogo pessoal" />
+          <QuickLink to="/evolucao" icon={LineChart} label="Evolucao" hint="Historico de peso" />
         </section>
       </div>
     </AppShell>
