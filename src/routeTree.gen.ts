@@ -13,6 +13,7 @@ import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as RefeicoesRouteImport } from './routes/refeicoes'
 import { Route as MetasRouteImport } from './routes/metas'
 import { Route as MedidasRouteImport } from './routes/medidas'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as EvolucaoRouteImport } from './routes/evolucao'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const MedidasRoute = MedidasRouteImport.update({
   path: '/medidas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InsightsRoute = InsightsRouteImport.update({
   id: '/insights',
   path: '/insights',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/medidas': typeof MedidasRoute
   '/metas': typeof MetasRoute
   '/refeicoes': typeof RefeicoesRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/medidas': typeof MedidasRoute
   '/metas': typeof MetasRoute
   '/refeicoes': typeof RefeicoesRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/medidas': typeof MedidasRoute
   '/metas': typeof MetasRoute
   '/refeicoes': typeof RefeicoesRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/evolucao'
     | '/insights'
+    | '/login'
     | '/medidas'
     | '/metas'
     | '/refeicoes'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/evolucao'
     | '/insights'
+    | '/login'
     | '/medidas'
     | '/metas'
     | '/refeicoes'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/evolucao'
     | '/insights'
+    | '/login'
     | '/medidas'
     | '/metas'
     | '/refeicoes'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EvolucaoRoute: typeof EvolucaoRoute
   InsightsRoute: typeof InsightsRoute
+  LoginRoute: typeof LoginRoute
   MedidasRoute: typeof MedidasRoute
   MetasRoute: typeof MetasRoute
   RefeicoesRoute: typeof RefeicoesRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MedidasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/insights': {
       id: '/insights'
       path: '/insights'
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EvolucaoRoute: EvolucaoRoute,
   InsightsRoute: InsightsRoute,
+  LoginRoute: LoginRoute,
   MedidasRoute: MedidasRoute,
   MetasRoute: MetasRoute,
   RefeicoesRoute: RefeicoesRoute,
@@ -187,3 +208,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
