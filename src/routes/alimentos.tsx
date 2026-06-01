@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Food } from "@/lib/dallas";
+import { MANUAL_MEAL_ITEM_FOOD_NAME, type Food } from "@/lib/dallas";
 
 export const Route = createFileRoute("/alimentos")({
   head: () => ({ meta: [{ title: "Alimentos - Projeto Dallas" }] }),
@@ -38,7 +38,11 @@ function Alimentos() {
     queryKey: ["foods", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase.from("foods").select("*").order("name");
+      const { data, error } = await supabase
+        .from("foods")
+        .select("*")
+        .neq("name", MANUAL_MEAL_ITEM_FOOD_NAME)
+        .order("name");
       if (error) throw error;
       return data as Food[];
     },

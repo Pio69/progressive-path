@@ -70,6 +70,8 @@ export type MealItem = {
 
 export type Macros = { kcal: number; protein: number; carbs: number; fat: number };
 
+export const MANUAL_MEAL_ITEM_FOOD_NAME = "__manual_meal_item__";
+
 export function calcMacros(food: Pick<Food, "calories_per_100g" | "protein_per_100g" | "carbs_per_100g" | "fat_per_100g">, grams: number): Macros {
   const f = grams / 100;
   return {
