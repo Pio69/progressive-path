@@ -70,15 +70,28 @@ function Evolucao() {
     .filter((h) => Number.isFinite(h.weight) && Number.isFinite(h.timestamp))
     .sort((a, b) => a.timestamp - b.timestamp);
 
-  const max = Math.max(...trendData.map((h) => h.weight), 0);
-  const min = Math.min(...trendData.map((h) => h.weight), max);
+  const maxWeight = Math.max(...trendData.map((h) => h.weight), 0);
+  const minWeight = Math.min(...trendData.map((h) => h.weight), maxWeight);
+  const padding = Math.max(0.5, (maxWeight - minWeight) * 0.15);
+  const max = maxWeight + padding;
+  const min = minWeight - padding;
   const range = Math.max(1, max - min);
+  const chart = { width: 640, height: 220, left: 54, right: 22, top: 18, bottom: 42 };
+  const plotWidth = chart.width - chart.left - chart.right;
+  const plotHeight = chart.height - chart.top - chart.bottom;
   const points = trendData.map((h, index) => {
-    const x = trendData.length === 1 ? 50 : (index / (trendData.length - 1)) * 100;
-    const y = 90 - ((h.weight - min) / range) * 70;
+    const x = chart.left + (trendData.length === 1 ? plotWidth / 2 : (index / (trendData.length - 1)) * plotWidth);
+    const y = chart.top + (1 - (h.weight - min) / range) * plotHeight;
     return { ...h, x, y };
   });
   const linePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
+  const areaPoints = points.length > 0
+    ? `${chart.left},${chart.top + plotHeight} ${linePoints} ${chart.left + plotWidth},${chart.top + plotHeight}`
+    : "";
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((value) => ({
+    y: chart.top + value * plotHeight,
+    label: max - value * range,
+  }));
 
   return (
     <AppShell>
@@ -99,26 +112,46 @@ function Evolucao() {
       {points.length > 0 && (
         <section className="mb-6 rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-3 text-sm font-semibold">Tendencia</h2>
-          <div className="h-40 rounded-xl bg-muted/30 p-3">
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full overflow-visible">
-              <line x1="0" y1="90" x2="100" y2="90" className="stroke-border" strokeWidth="1" />
-              <line x1="0" y1="20" x2="100" y2="20" className="stroke-border" strokeWidth="1" strokeDasharray="3 3" />
+          <div className="rounded-xl bg-muted/30 p-2 sm:p-4">
+            <svg viewBox={`0 0 ${chart.width} ${chart.height}`} className="h-56 w-full">
+              {gridLines.map((line) => (
+                <g key={line.y}>
+                  <line x1={chart.left} y1={line.y} x2={chart.left + plotWidth} y2={line.y} className="stroke-border/70" strokeWidth="1" strokeDasharray="5 7" />
+                  <text x={chart.left - 10} y={line.y + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">
+                    {line.label.toFixed(1)}
+                  </text>
+                </g>
+              ))}
+              <line x1={chart.left} y1={chart.top} x2={chart.left} y2={chart.top + plotHeight} className="stroke-border" strokeWidth="1.5" />
+              <line x1={chart.left} y1={chart.top + plotHeight} x2={chart.left + plotWidth} y2={chart.top + plotHeight} className="stroke-border" strokeWidth="1.5" />
+              {areaPoints && <polygon points={areaPoints} className="fill-primary/10" />}
               {points.length === 1 ? (
-                <line x1="0" y1={points[0].y} x2="100" y2={points[0].y} className="stroke-primary/50" strokeWidth="2" />
+                <line x1={chart.left} y1={points[0].y} x2={chart.left + plotWidth} y2={points[0].y} className="stroke-primary" strokeWidth="4" strokeLinecap="round" />
               ) : (
-                <polyline points={linePoints} fill="none" className="stroke-primary" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points={linePoints} fill="none" className="stroke-primary" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
               )}
               {points.map((p) => (
-                <circle key={p.id} cx={p.x} cy={p.y} r="2.5" className="fill-primary" />
+                <g key={p.id}>
+                  <circle cx={p.x} cy={p.y} r="6" className="fill-background stroke-primary" strokeWidth="4" />
+                  <title>{`${new Date(p.measured_at + "T00:00").toLocaleDateString("pt-BR")} - ${p.weight.toFixed(1)} kg`}</title>
+                </g>
               ))}
+              {points[0] && (
+                <text x={points[0].x} y={chart.height - 18} textAnchor="middle" className="fill-muted-foreground text-[12px]">
+                  {new Date(points[0].measured_at + "T00:00").toLocaleDateString("pt-BR")}
+                </text>
+              )}
+              {points.length > 1 && (
+                <text x={points[points.length - 1].x} y={chart.height - 18} textAnchor="middle" className="fill-muted-foreground text-[12px]">
+                  {new Date(points[points.length - 1].measured_at + "T00:00").toLocaleDateString("pt-BR")}
+                </text>
+              )}
             </svg>
           </div>
-          <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-            <span>{min} kg</span><span>{max} kg</span>
-          </div>
-          <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-            <span>{new Date(points[0].measured_at + "T00:00").toLocaleDateString("pt-BR")}</span>
-            <span>{new Date(points[points.length - 1].measured_at + "T00:00").toLocaleDateString("pt-BR")}</span>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Inicial: {points[0].weight.toFixed(1)} kg</span>
+            <span>Atual: {points[points.length - 1].weight.toFixed(1)} kg</span>
+            <span>Variação: {(points[points.length - 1].weight - points[0].weight).toFixed(1)} kg</span>
           </div>
         </section>
       )}
