@@ -59,6 +59,21 @@ function Registro() {
     },
   });
 
+  const { data: recentLogs = [] } = useQuery({
+    queryKey: ["daily_logs", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_logs")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("log_date", { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      return data as DailyLog[];
+    },
+  });
+
   useEffect(() => {
     if (log) {
       setForm((current) => ({
@@ -213,6 +228,39 @@ function Registro() {
         </section>
 
         <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground">Registros anteriores</h2>
+            <div className="mt-3 space-y-2">
+              {recentLogs.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+                  Nenhum registro salvo ainda.
+                </div>
+              ) : (
+                recentLogs.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setForm((current) => ({ ...current, date: item.log_date }))}
+                    className={`w-full rounded-xl border px-3 py-2 text-left transition-colors hover:bg-muted/60 ${
+                      item.log_date === form.date ? "border-primary bg-primary/10" : "border-border bg-background/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">{formatLogDate(item.log_date)}</span>
+                      {item.log_date === todayIso() && <Badge className="rounded-full">Hoje</Badge>}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {item.weight_kg && <span>{Number(item.weight_kg)} kg</span>}
+                      {item.calories && <span>{Number(item.calories)} kcal</span>}
+                      {item.trained && <span>Treino</span>}
+                      {item.sleep_hours && <span>{Number(item.sleep_hours)}h sono</span>}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
           <h2 className="text-sm font-semibold text-muted-foreground">Marcadores rapidos</h2>
           <div className="flex flex-wrap gap-2">
             {TAGS.map((t) => (
@@ -235,6 +283,15 @@ function Registro() {
       </form>
     </AppShell>
   );
+}
+
+function formatLogDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    weekday: "short",
+  }).format(new Date(year, month - 1, day));
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
