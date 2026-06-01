@@ -36,9 +36,9 @@ export type Database = {
         ]
       }
       meal_items: {
-        Row: { id: string; user_id: string; meal_id: string; food_id: string; quantity_g: number; food_name: string; calories_per_100g: number; protein_per_100g: number; carbs_per_100g: number; fat_per_100g: number; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; user_id: string; meal_id: string; food_id: string; quantity_g?: number; food_name: string; calories_per_100g?: number; protein_per_100g?: number; carbs_per_100g?: number; fat_per_100g?: number; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; user_id?: string; meal_id?: string; food_id?: string; quantity_g?: number; food_name?: string; calories_per_100g?: number; protein_per_100g?: number; carbs_per_100g?: number; fat_per_100g?: number; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; user_id: string; meal_id: string; food_id: string | null; quantity_g: number; food_name: string; calories_per_100g: number; protein_per_100g: number; carbs_per_100g: number; fat_per_100g: number; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; user_id: string; meal_id: string; food_id?: string | null; quantity_g?: number; food_name: string; calories_per_100g?: number; protein_per_100g?: number; carbs_per_100g?: number; fat_per_100g?: number; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; user_id?: string; meal_id?: string; food_id?: string | null; quantity_g?: number; food_name?: string; calories_per_100g?: number; protein_per_100g?: number; carbs_per_100g?: number; fat_per_100g?: number; created_at?: string | null; updated_at?: string | null }
         Relationships: [
           {
             foreignKeyName: "meal_items_food_id_fkey"

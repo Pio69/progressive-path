@@ -58,14 +58,14 @@ export type MealItem = {
   id: string;
   user_id: string;
   meal_id: string;
-  food_id: string;
+  food_id: string | null;
   quantity_g: number;
   food_name: string;
   calories_per_100g: number;
   protein_per_100g: number;
   carbs_per_100g: number;
   fat_per_100g: number;
-  foods: Food;
+  foods?: Food | null;
 };
 
 export type Macros = { kcal: number; protein: number; carbs: number; fat: number };

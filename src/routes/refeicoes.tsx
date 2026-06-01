@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,12 +6,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { calcMacros, sumMacros, todayIso, type Food, type Meal, type MealItem } from "@/lib/dallas";
+import { calcMacros, sumMacros, todayIso, type Meal, type MealItem } from "@/lib/dallas";
 
 export const Route = createFileRoute("/refeicoes")({
   head: () => ({ meta: [{ title: "Refeicoes - Projeto Dallas" }] }),
@@ -31,30 +31,42 @@ function Refeicoes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("meals")
-        .select("*, meal_items(*, foods(*))")
+        .select("*, meal_items(*)")
         .eq("meal_date", date)
         .order("meal_type", { ascending: true });
       if (error) throw error;
-      return data as (Meal & { meal_items: (MealItem & { foods: Food })[] })[];
-    },
-  });
-
-  const { data: foods = [] } = useQuery({
-    queryKey: ["foods", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("foods").select("*").order("name");
-      if (error) throw error;
-      return data as Food[];
+      return data as (Meal & { meal_items: MealItem[] })[];
     },
   });
 
   const createMeal = useMutation({
-    mutationFn: async (m: { meal_type: string }) => {
-      const { error } = await supabase.from("meals").insert({ user_id: user!.id, meal_date: date, meal_type: m.meal_type });
+    mutationFn: async (m: { meal_type: string; itemsText: string }) => {
+      const { data, error } = await supabase
+        .from("meals")
+        .insert({ user_id: user!.id, meal_date: date, meal_type: m.meal_type })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      const items = parseMealItems(m.itemsText);
+      if (items.length > 0) {
+        const { error: itemsError } = await supabase.from("meal_items").insert(
+          items.map((item) => ({
+            user_id: user!.id,
+            meal_id: data.id,
+            food_id: null,
+            quantity_g: item.grams,
+            food_name: item.name,
+            calories_per_100g: 0,
+            protein_per_100g: 0,
+            carbs_per_100g: 0,
+            fat_per_100g: 0,
+          })),
+        );
+        if (itemsError) throw itemsError;
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); setNewMealOpen(false); toast.success("Refeicao criada"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); setNewMealOpen(false); toast.success("Refeicao registrada"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -69,23 +81,25 @@ function Refeicoes() {
   });
 
   const addItem = useMutation({
-    mutationFn: async (i: { meal_id: string; food_id: string; grams: number }) => {
-      const food = foods.find((f) => f.id === i.food_id);
-      if (!food) throw new Error("Alimento nao encontrado");
-      const { error } = await supabase.from("meal_items").insert({
-        user_id: user!.id,
-        meal_id: i.meal_id,
-        food_id: i.food_id,
-        quantity_g: i.grams,
-        food_name: food.name,
-        calories_per_100g: food.calories_per_100g,
-        protein_per_100g: food.protein_per_100g,
-        carbs_per_100g: food.carbs_per_100g,
-        fat_per_100g: food.fat_per_100g,
-      });
+    mutationFn: async (i: { meal_id: string; itemsText: string }) => {
+      const items = parseMealItems(i.itemsText);
+      if (items.length === 0) throw new Error("Digite pelo menos um item");
+      const { error } = await supabase.from("meal_items").insert(
+        items.map((item) => ({
+          user_id: user!.id,
+          meal_id: i.meal_id,
+          food_id: null,
+          quantity_g: item.grams,
+          food_name: item.name,
+          calories_per_100g: 0,
+          protein_per_100g: 0,
+          carbs_per_100g: 0,
+          fat_per_100g: 0,
+        })),
+      );
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); setAddItemMealId(null); toast.success("Item adicionado"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); setAddItemMealId(null); toast.success("Itens adicionados"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -95,7 +109,7 @@ function Refeicoes() {
   });
 
   const totals = sumMacros(
-    meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it.foods, Number(it.quantity_g))))
+    meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g))))
   );
 
   return (
@@ -103,7 +117,7 @@ function Refeicoes() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Refeicoes</h1>
-          <p className="text-sm text-muted-foreground">Registre os alimentos consumidos no dia.</p>
+          <p className="text-sm text-muted-foreground">Digite o que comeu, uma linha por item.</p>
         </div>
         <div className="flex items-center gap-2">
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-auto" />
@@ -114,10 +128,18 @@ function Refeicoes() {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
-                createMeal.mutate({ meal_type: String(f.get("meal_type")) });
+                createMeal.mutate({ meal_type: String(f.get("meal_type")), itemsText: String(f.get("items")) });
               }} className="space-y-3">
-                <div><Label className="text-xs">Nome</Label><Input name="meal_type" required defaultValue="Cafe da manha" /></div>
-                <Button type="submit" className="w-full" disabled={createMeal.isPending}>Criar</Button>
+                <div><Label className="text-xs">Nome da refeicao</Label><Input name="meal_type" required defaultValue={`Ref ${meals.length + 1}`} /></div>
+                <div>
+                  <Label className="text-xs">Itens</Label>
+                  <Textarea
+                    name="items"
+                    className="min-h-36"
+                    placeholder={"200g iogurte morango tirol zero\n40g whey dux chocolate branco"}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={createMeal.isPending}>{createMeal.isPending ? "Registrando..." : "Registrar refeicao"}</Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -131,19 +153,13 @@ function Refeicoes() {
         <Total label="Gordura" value={totals.fat} unit="g" />
       </section>
 
-      {foods.length === 0 && (
-        <div className="mb-4 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-          Voce ainda nao tem alimentos cadastrados. <Link to="/alimentos" className="text-primary underline">Cadastre seus alimentos</Link> para adiciona-los as refeicoes.
-        </div>
-      )}
-
       <section className="space-y-3">
         {meals.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
             Nenhuma refeicao registrada nesta data.
           </div>
         ) : meals.map((m) => {
-          const mealMacros = sumMacros(m.meal_items.map((it) => calcMacros(it.foods, Number(it.quantity_g))));
+          const mealMacros = sumMacros(m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g))));
           return (
             <article key={m.id} className="rounded-2xl border border-border bg-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -160,11 +176,11 @@ function Refeicoes() {
 
               <ul className="mt-3 space-y-1.5">
                 {m.meal_items.map((it) => {
-                  const macros = calcMacros(it.foods, Number(it.quantity_g));
+                  const macros = calcMacros(it, Number(it.quantity_g));
                   return (
                     <li key={it.id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2 text-sm">
                       <div className="min-w-0">
-                        <div className="truncate font-medium">{it.foods.name}</div>
+                        <div className="truncate font-medium">{it.food_name}</div>
                         <div className="text-xs text-muted-foreground">{Number(it.quantity_g)}g</div>
                       </div>
                       <div className="flex items-center gap-3 text-xs">
@@ -179,13 +195,13 @@ function Refeicoes() {
 
               <Dialog open={addItemMealId === m.id} onOpenChange={(o) => setAddItemMealId(o ? m.id : null)}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="mt-3 rounded-lg" disabled={foods.length === 0}>
-                    <Plus className="mr-1 h-3.5 w-3.5" />Adicionar alimento
+                  <Button variant="outline" size="sm" className="mt-3 rounded-lg">
+                    <Plus className="mr-1 h-3.5 w-3.5" />Adicionar itens
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader><DialogTitle>Adicionar alimento</DialogTitle></DialogHeader>
-                  <AddItemForm foods={foods} onSubmit={(food_id, grams) => addItem.mutate({ meal_id: m.id, food_id, grams })} pending={addItem.isPending} />
+                  <DialogHeader><DialogTitle>Adicionar itens</DialogTitle></DialogHeader>
+                  <AddItemsForm onSubmit={(itemsText) => addItem.mutate({ meal_id: m.id, itemsText })} pending={addItem.isPending} />
                 </DialogContent>
               </Dialog>
             </article>
@@ -196,40 +212,37 @@ function Refeicoes() {
   );
 }
 
-function AddItemForm({ foods, onSubmit, pending }: { foods: Food[]; onSubmit: (food_id: string, grams: number) => void; pending: boolean }) {
-  const [foodId, setFoodId] = useState(foods[0]?.id ?? "");
-  const [grams, setGrams] = useState(100);
-  const food = foods.find((f) => f.id === foodId);
-  const macros = food ? calcMacros(food, grams) : null;
-
+function AddItemsForm({ onSubmit, pending }: { onSubmit: (itemsText: string) => void; pending: boolean }) {
+  const [itemsText, setItemsText] = useState("");
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (foodId) onSubmit(foodId, grams); }} className="space-y-3">
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(itemsText); }} className="space-y-3">
       <div>
-        <Label className="text-xs">Alimento</Label>
-        <Select value={foodId} onValueChange={setFoodId}>
-          <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-          <SelectContent>
-            {foods.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Label className="text-xs">Itens</Label>
+        <Textarea
+          value={itemsText}
+          onChange={(e) => setItemsText(e.target.value)}
+          className="min-h-36"
+          placeholder={"200g arroz branco\n200g frango desfiado"}
+        />
       </div>
-      <div>
-        <Label className="text-xs">Quantidade (g)</Label>
-        <Input type="number" min="1" value={grams} onChange={(e) => setGrams(+e.target.value)} />
-      </div>
-      {macros && (
-        <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div><div className="font-semibold text-foreground">{macros.kcal}</div>kcal</div>
-            <div><div className="font-semibold text-foreground">{macros.protein}g</div>P</div>
-            <div><div className="font-semibold text-foreground">{macros.carbs}g</div>C</div>
-            <div><div className="font-semibold text-foreground">{macros.fat}g</div>G</div>
-          </div>
-        </div>
-      )}
-      <Button type="submit" className="w-full" disabled={pending || !foodId}>Adicionar</Button>
+      <Button type="submit" className="w-full" disabled={pending || parseMealItems(itemsText).length === 0}>
+        {pending ? "Adicionando..." : "Adicionar itens"}
+      </Button>
     </form>
   );
+}
+
+function parseMealItems(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^(\d+(?:[,.]\d+)?)\s*g(?:ramas?)?\s+(.+)$/i);
+      if (!match) return { grams: 0, name: line };
+      return { grams: Number(match[1].replace(",", ".")), name: match[2].trim() };
+    })
+    .filter((item) => item.name.length > 0);
 }
 
 function Total({ label, value, unit }: { label: string; value: number; unit: string }) {
