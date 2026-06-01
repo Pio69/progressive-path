@@ -119,8 +119,18 @@ async function requireAuthenticatedUser(request: Request) {
   if (!token) throw new Error("Nao autenticado");
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !supabaseKey) throw new Error("Supabase server env nao configurada");
+  const supabaseKey =
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    const missing = [
+      ...(!supabaseUrl ? ["SUPABASE_URL ou VITE_SUPABASE_URL"] : []),
+      ...(!supabaseKey ? ["SUPABASE_PUBLISHABLE_KEY, SUPABASE_ANON_KEY, VITE_SUPABASE_PUBLISHABLE_KEY ou VITE_SUPABASE_ANON_KEY"] : []),
+    ];
+    throw new Error(`Supabase env faltando: ${missing.join("; ")}`);
+  }
 
   const client = createClient<Database>(supabaseUrl, supabaseKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
