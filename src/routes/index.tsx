@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Flame, Beef, Plus, Apple, Utensils, LineChart, ClipboardList, Moon, Droplets, Dumbbell } from "lucide-react";
+import { Flame, Beef, Plus, Utensils, LineChart, ClipboardList, Moon, Droplets, Dumbbell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -73,7 +73,6 @@ function Home() {
           <p className="mt-1 text-sm text-muted-foreground">Objetivo: {profile?.goal ?? "cutting"}</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild size="lg" className="rounded-xl"><Link to="/refeicoes"><Plus className="mr-2 h-4 w-4" />Adicionar refeicao</Link></Button>
-            <Button asChild size="lg" variant="secondary" className="rounded-xl"><Link to="/alimentos"><Apple className="mr-2 h-4 w-4" />Meus alimentos</Link></Button>
           </div>
         </section>
 
@@ -95,9 +94,8 @@ function Home() {
           <DailyCard label="Treino" value={todayLog?.trained ? "sim" : "nao"} icon={Dumbbell} to="/registro" />
         </section>
 
-        <section className="grid gap-3 md:grid-cols-3">
+        <section className="grid gap-3 md:grid-cols-2">
           <QuickLink to="/refeicoes" icon={Utensils} label="Refeicoes do dia" hint={`${meals.length} registrada${meals.length === 1 ? "" : "s"}`} />
-          <QuickLink to="/alimentos" icon={Apple} label="Alimentos" hint="Catalogo pessoal" />
           <QuickLink to="/evolucao" icon={LineChart} label="Evolucao" hint="Historico de peso" />
         </section>
       </div>
