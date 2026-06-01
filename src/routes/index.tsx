@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { USER, TODAY, DAILY_LOGS } from "@/lib/mock-data";
@@ -40,8 +41,11 @@ function Home() {
   const pTone = proteinTone(TODAY.protein);
   const onTarget = cTone === "success" && pTone !== "destructive";
 
-  const hour = new Date().getHours();
-  const greet = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const [greet, setGreet] = useState("Olá");
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreet(hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite");
+  }, []);
 
   return (
     <AppShell>
