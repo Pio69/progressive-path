@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
-import { calcMacros, sumMacros, todayIso, type DailyLog, type Food, type Meal, type MealItem } from "@/lib/dallas";
+import { calcMacros, sumMacros, todayIso, type DailyLog, type Meal, type MealItem } from "@/lib/dallas";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,10 +31,10 @@ function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("meals")
-        .select("*, meal_items(*, foods(*))")
+        .select("*, meal_items(*)")
         .eq("meal_date", today);
       if (error) throw error;
-      return data as (Meal & { meal_items: (MealItem & { foods: Food })[] })[];
+      return data as (Meal & { meal_items: MealItem[] })[];
     },
   });
 
@@ -59,7 +59,7 @@ function Home() {
     setGreet(h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite");
   }, []);
 
-  const totals = sumMacros(meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it.foods, Number(it.quantity_g)))));
+  const totals = sumMacros(meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g)))));
   const weight = profile?.weight_kg == null ? null : Number(profile.weight_kg);
 
   return (
