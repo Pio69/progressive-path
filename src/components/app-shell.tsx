@@ -1,5 +1,15 @@
 import { Link, useLocation, Navigate } from "@tanstack/react-router";
-import { Activity, Home, Utensils, LineChart, Target, LogOut, ClipboardList, Sparkles } from "lucide-react";
+import {
+  Activity,
+  Home,
+  Utensils,
+  LineChart,
+  Target,
+  LogOut,
+  ClipboardList,
+  Sparkles,
+  Apple,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -7,6 +17,7 @@ import { useProfile } from "@/hooks/use-profile";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
+  { to: "/alimentos", label: "Alimentos", icon: Apple },
   { to: "/refeicoes", label: "Refeições", icon: Utensils },
   { to: "/registro", label: "Registro", icon: ClipboardList },
   { to: "/evolucao", label: "Evolução", icon: LineChart },
@@ -14,7 +25,13 @@ const NAV = [
   { to: "/metas", label: "Metas", icon: Target },
 ];
 
-export function AppShell({ children, skipProfileGuard = false }: { children: ReactNode; skipProfileGuard?: boolean }) {
+export function AppShell({
+  children,
+  skipProfileGuard = false,
+}: {
+  children: ReactNode;
+  skipProfileGuard?: boolean;
+}) {
   const { pathname } = useLocation();
   const { user, loading: authLoading, signOut } = useAuth();
   const { hasProfile, loading: profileLoading } = useProfile();
@@ -62,7 +79,9 @@ export function AppShell({ children, skipProfileGuard = false }: { children: Rea
                 to={n.to}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
-                  active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  active
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -72,8 +91,14 @@ export function AppShell({ children, skipProfileGuard = false }: { children: Rea
           })}
         </nav>
         <div className="mt-auto flex items-center justify-between rounded-xl border border-border bg-card/40 px-3 py-2">
-          <div className="truncate text-xs text-muted-foreground" title={user.email ?? ""}>{user.email}</div>
-          <button onClick={() => signOut()} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Sair">
+          <div className="truncate text-xs text-muted-foreground" title={user.email ?? ""}>
+            {user.email}
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Sair"
+          >
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -86,7 +111,11 @@ export function AppShell({ children, skipProfileGuard = false }: { children: Rea
           </div>
           <span className="text-sm font-semibold">Projeto Dallas</span>
         </div>
-        <button onClick={() => signOut()} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground" aria-label="Sair">
+        <button
+          onClick={() => signOut()}
+          className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+          aria-label="Sair"
+        >
           <LogOut className="h-4 w-4" />
         </button>
       </header>
@@ -103,7 +132,10 @@ export function AppShell({ children, skipProfileGuard = false }: { children: Rea
             <Link
               key={n.to}
               to={n.to}
-              className={cn("flex flex-1 flex-col items-center gap-1 rounded-lg py-1.5 text-[10px]", active ? "text-primary" : "text-muted-foreground")}
+              className={cn(
+                "flex flex-1 flex-col items-center gap-1 rounded-lg py-1.5 text-[10px]",
+                active ? "text-primary" : "text-muted-foreground",
+              )}
             >
               <Icon className="h-5 w-5" />
               {n.label}

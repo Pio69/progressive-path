@@ -6,13 +6,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
+import { syncDailyLogNutrition } from "@/lib/dallas-data";
 import { todayIso, type DailyLog } from "@/lib/dallas";
 
 export const Route = createFileRoute("/registro")({
@@ -20,7 +27,17 @@ export const Route = createFileRoute("/registro")({
   component: Registro,
 });
 
-const TAGS = ["Fome alta", "Pouca fome", "Compulsao", "Retencao", "Treino forte", "Treino ruim", "Muito sono", "Dia fora da rotina", "Evento social"];
+const TAGS = [
+  "Fome alta",
+  "Pouca fome",
+  "Compulsao",
+  "Retencao",
+  "Treino forte",
+  "Treino ruim",
+  "Muito sono",
+  "Dia fora da rotina",
+  "Evento social",
+];
 
 function Registro() {
   const { user } = useAuth();
@@ -65,6 +82,9 @@ function Registro() {
         .from("daily_logs")
         .select("*")
         .eq("user_id", user!.id)
+        .or(
+          "routine_logged.eq.true,weight_kg.not.is.null,water_l.not.is.null,sleep_hours.not.is.null,notes.not.is.null,trained.eq.true,cardio.eq.true,alcohol.eq.true,free_meal.eq.true",
+        )
         .order("log_date", { ascending: false })
         .limit(15);
       if (error) throw error;
@@ -118,9 +138,8 @@ function Registro() {
       const payload = {
         user_id: user!.id,
         log_date: form.date,
+        routine_logged: true,
         weight_kg: form.weight || null,
-        calories: null,
-        protein_g: null,
         water_l: form.water || null,
         trained: form.trained,
         training_start: form.trained && form.trainingStart ? form.trainingStart : null,
@@ -158,6 +177,8 @@ function Registro() {
           .eq("id", user!.id);
         if (profileError) throw profileError;
       }
+
+      await syncDailyLogNutrition(user!.id, form.date);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["daily_log"] });
@@ -166,43 +187,108 @@ function Registro() {
       qc.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Registro salvo");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (error) => toast.error(errorMessage(error)),
   });
 
   return (
     <AppShell>
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Registro diario</h1>
-        <p className="text-sm text-muted-foreground">Peso, rotina e sinais do dia. Refeicoes ficam na aba propria.</p>
+        <p className="text-sm text-muted-foreground">
+          Peso, rotina e sinais do dia. Refeicoes ficam na aba propria.
+        </p>
       </header>
 
       <form
-        onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          save.mutate();
+        }}
         className="grid gap-6 lg:grid-cols-3"
       >
         <section className="space-y-4 rounded-2xl border border-border bg-card p-5 lg:col-span-2">
           <h2 className="text-sm font-semibold text-muted-foreground">Registro rapido</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Data"><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
-            <Field label="Peso (kg)"><Input type="number" step="0.1" value={form.weight} onChange={(e) => setForm({ ...form, weight: +e.target.value })} /></Field>
-            <Field label="Agua (L)"><Input type="number" step="0.1" value={form.water} onChange={(e) => setForm({ ...form, water: +e.target.value })} /></Field>
-            <Field label="Horas de sono"><Input type="number" step="0.1" value={form.sleep} onChange={(e) => setForm({ ...form, sleep: +e.target.value })} /></Field>
+            <Field label="Data">
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </Field>
+            <Field label="Peso (kg)">
+              <Input
+                type="number"
+                step="0.1"
+                value={form.weight}
+                onChange={(e) => setForm({ ...form, weight: +e.target.value })}
+              />
+            </Field>
+            <Field label="Agua (L)">
+              <Input
+                type="number"
+                step="0.1"
+                value={form.water}
+                onChange={(e) => setForm({ ...form, water: +e.target.value })}
+              />
+            </Field>
+            <Field label="Horas de sono">
+              <Input
+                type="number"
+                step="0.1"
+                value={form.sleep}
+                onChange={(e) => setForm({ ...form, sleep: +e.target.value })}
+              />
+            </Field>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <ToggleRow label="Treinou musculacao" value={form.trained} onChange={(v) => setForm({ ...form, trained: v })} />
-            <ToggleRow label="Fez cardio" value={form.cardio} onChange={(v) => setForm({ ...form, cardio: v })} />
-            <ToggleRow label="Consumiu alcool" value={form.alcohol} onChange={(v) => setForm({ ...form, alcohol: v })} />
-            <ToggleRow label="Refeicao livre" value={form.freeMeal} onChange={(v) => setForm({ ...form, freeMeal: v })} />
+            <ToggleRow
+              label="Treinou musculacao"
+              value={form.trained}
+              onChange={(v) => setForm({ ...form, trained: v })}
+            />
+            <ToggleRow
+              label="Fez cardio"
+              value={form.cardio}
+              onChange={(v) => setForm({ ...form, cardio: v })}
+            />
+            <ToggleRow
+              label="Consumiu alcool"
+              value={form.alcohol}
+              onChange={(v) => setForm({ ...form, alcohol: v })}
+            />
+            <ToggleRow
+              label="Refeicao livre"
+              value={form.freeMeal}
+              onChange={(v) => setForm({ ...form, freeMeal: v })}
+            />
           </div>
 
           {form.trained && (
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Inicio treino"><Input type="time" value={form.trainingStart} onChange={(e) => setForm({ ...form, trainingStart: e.target.value })} /></Field>
-              <Field label="Fim treino"><Input type="time" value={form.trainingEnd} onChange={(e) => setForm({ ...form, trainingEnd: e.target.value })} /></Field>
+              <Field label="Inicio treino">
+                <Input
+                  type="time"
+                  value={form.trainingStart}
+                  onChange={(e) => setForm({ ...form, trainingStart: e.target.value })}
+                />
+              </Field>
+              <Field label="Fim treino">
+                <Input
+                  type="time"
+                  value={form.trainingEnd}
+                  onChange={(e) => setForm({ ...form, trainingEnd: e.target.value })}
+                />
+              </Field>
               <Field label="Intensidade">
-                <Select value={form.intensity} onValueChange={(v) => setForm({ ...form, intensity: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.intensity}
+                  onValueChange={(v) => setForm({ ...form, intensity: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="leve">Leve</SelectItem>
                     <SelectItem value="moderado">Moderado</SelectItem>
@@ -215,7 +301,12 @@ function Registro() {
           )}
 
           <Field label="Observacoes">
-            <Textarea rows={4} placeholder="Como foi a fome, energia, treino, rotina..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            <Textarea
+              rows={4}
+              placeholder="Como foi a fome, energia, treino, rotina..."
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
           </Field>
         </section>
 
@@ -234,7 +325,9 @@ function Registro() {
                     type="button"
                     onClick={() => setForm((current) => ({ ...current, date: item.log_date }))}
                     className={`w-full rounded-xl border px-3 py-2 text-left transition-colors hover:bg-muted/60 ${
-                      item.log_date === form.date ? "border-primary bg-primary/10" : "border-border bg-background/40"
+                      item.log_date === form.date
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-background/40"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -267,7 +360,12 @@ function Registro() {
           <div className="rounded-xl border border-border bg-background/40 p-3 text-xs text-muted-foreground">
             Esses sinais ajudam a futura IA a explicar peso, fome, performance e consistencia.
           </div>
-          <Button type="submit" className="w-full rounded-xl" size="lg" disabled={save.isPending || isLoading}>
+          <Button
+            type="submit"
+            className="w-full rounded-xl"
+            size="lg"
+            disabled={save.isPending || isLoading}
+          >
             {save.isPending ? "Salvando..." : "Salvar registro"}
           </Button>
         </section>
@@ -285,6 +383,10 @@ function formatLogDate(value: string) {
   }).format(new Date(year, month - 1, day));
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Erro inesperado";
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -294,7 +396,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-border bg-background/40 px-4 py-3">
       <span className="text-sm">{label}</span>

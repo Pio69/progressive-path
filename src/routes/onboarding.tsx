@@ -6,7 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { todayIso } from "@/lib/dallas";
@@ -35,7 +41,11 @@ function Onboarding() {
   const [saving, setSaving] = useState(false);
 
   if (authLoading || profileLoading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Carregando...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Carregando...
+      </div>
+    );
   }
   if (!user) return <Navigate to="/login" />;
   if (hasProfile) return <Navigate to="/" />;
@@ -63,25 +73,18 @@ function Onboarding() {
       });
       if (gErr) throw gErr;
 
-      await supabase.from("weight_history").insert({
+      const { error: weightError } = await supabase.from("weight_history").insert({
         user_id: user.id,
         measured_at: todayIso(),
         weight_kg: form.weight_kg,
       });
-
-      await supabase.from("daily_logs").insert({
-        user_id: user.id,
-        log_date: todayIso(),
-        weight_kg: form.weight_kg,
-        calories: form.calories,
-        protein_g: form.protein_g,
-      });
+      if (weightError) throw weightError;
 
       await qc.invalidateQueries();
       toast.success("Perfil configurado!");
       navigate({ to: "/" });
-    } catch (err: any) {
-      toast.error(err.message ?? "Erro ao salvar");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar");
     } finally {
       setSaving(false);
     }
@@ -92,30 +95,54 @@ function Onboarding() {
       <div className="mx-auto max-w-2xl">
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-semibold tracking-tight">Bem-vindo ao Projeto Dallas</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Vamos configurar seu perfil e metas para começar.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Vamos configurar seu perfil e metas para começar.
+          </p>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-border bg-card p-6">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 rounded-2xl border border-border bg-card p-6"
+        >
           <section className="space-y-4">
             <h2 className="text-sm font-semibold text-muted-foreground">Dados pessoais</h2>
             <div className="space-y-1.5">
               <Label>Nome</Label>
-              <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Seu nome" />
+              <Input
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Seu nome"
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Altura (cm)</Label>
-                <Input type="number" step="0.1" required value={form.height_cm} onChange={(e) => setForm({ ...form, height_cm: +e.target.value })} />
+                <Input
+                  type="number"
+                  step="0.1"
+                  required
+                  value={form.height_cm}
+                  onChange={(e) => setForm({ ...form, height_cm: +e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Peso atual (kg)</Label>
-                <Input type="number" step="0.1" required value={form.weight_kg} onChange={(e) => setForm({ ...form, weight_kg: +e.target.value })} />
+                <Input
+                  type="number"
+                  step="0.1"
+                  required
+                  value={form.weight_kg}
+                  onChange={(e) => setForm({ ...form, weight_kg: +e.target.value })}
+                />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label>Objetivo</Label>
               <Select value={form.goal} onValueChange={(v) => setForm({ ...form, goal: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cutting">Cutting (perder gordura)</SelectItem>
                   <SelectItem value="manutencao">Manutenção</SelectItem>
@@ -130,19 +157,39 @@ function Onboarding() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Calorias (kcal)</Label>
-                <Input type="number" required value={form.calories} onChange={(e) => setForm({ ...form, calories: +e.target.value })} />
+                <Input
+                  type="number"
+                  required
+                  value={form.calories}
+                  onChange={(e) => setForm({ ...form, calories: +e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Proteína (g)</Label>
-                <Input type="number" required value={form.protein_g} onChange={(e) => setForm({ ...form, protein_g: +e.target.value })} />
+                <Input
+                  type="number"
+                  required
+                  value={form.protein_g}
+                  onChange={(e) => setForm({ ...form, protein_g: +e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Carboidratos (g)</Label>
-                <Input type="number" required value={form.carbs_g} onChange={(e) => setForm({ ...form, carbs_g: +e.target.value })} />
+                <Input
+                  type="number"
+                  required
+                  value={form.carbs_g}
+                  onChange={(e) => setForm({ ...form, carbs_g: +e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Gorduras (g)</Label>
-                <Input type="number" required value={form.fat_g} onChange={(e) => setForm({ ...form, fat_g: +e.target.value })} />
+                <Input
+                  type="number"
+                  required
+                  value={form.fat_g}
+                  onChange={(e) => setForm({ ...form, fat_g: +e.target.value })}
+                />
               </div>
             </div>
           </section>

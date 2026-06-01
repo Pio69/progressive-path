@@ -21,6 +21,7 @@ export type DailyLog = {
   id: string;
   user_id: string;
   log_date: string;
+  routine_logged: boolean;
   weight_kg: number | null;
   calories: number | null;
   protein_g: number | null;
@@ -34,6 +35,17 @@ export type DailyLog = {
   alcohol: boolean;
   free_meal: boolean;
   tags: string[];
+  notes: string | null;
+};
+
+export type BodyMeasurement = {
+  id: string;
+  user_id: string;
+  measured_at: string;
+  waist_cm: number | null;
+  chest_cm: number | null;
+  arm_cm: number | null;
+  thigh_cm: number | null;
   notes: string | null;
 };
 
@@ -72,7 +84,10 @@ export type Macros = { kcal: number; protein: number; carbs: number; fat: number
 
 export const MANUAL_MEAL_ITEM_FOOD_NAME = "__manual_meal_item__";
 
-export function calcMacros(food: Pick<Food, "calories_per_100g" | "protein_per_100g" | "carbs_per_100g" | "fat_per_100g">, grams: number): Macros {
+export function calcMacros(
+  food: Pick<Food, "calories_per_100g" | "protein_per_100g" | "carbs_per_100g" | "fat_per_100g">,
+  grams: number,
+): Macros {
   const f = grams / 100;
   return {
     kcal: +(Number(food.calories_per_100g) * f).toFixed(1),

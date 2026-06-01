@@ -3,12 +3,31 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Flame, Beef, Plus, Utensils, LineChart, ClipboardList, Moon, Droplets, Dumbbell } from "lucide-react";
+import {
+  Flame,
+  Beef,
+  Plus,
+  Utensils,
+  LineChart,
+  ClipboardList,
+  Moon,
+  Droplets,
+  Dumbbell,
+  Ruler,
+  type LucideIcon,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
-import { calcMacros, sumMacros, todayIso, type DailyLog, type Meal, type MealItem } from "@/lib/dallas";
+import {
+  calcMacros,
+  sumMacros,
+  todayIso,
+  type DailyLog,
+  type Meal,
+  type MealItem,
+} from "@/lib/dallas";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,54 +78,129 @@ function Home() {
     setGreet(h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite");
   }, []);
 
-  const totals = sumMacros(meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g)))));
+  const totals = sumMacros(
+    meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g)))),
+  );
   const weight = profile?.weight_kg == null ? null : Number(profile.weight_kg);
 
   return (
     <AppShell>
       <div className="space-y-6">
         <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/15 via-card to-accent/10 p-6 md:p-8">
-          <div className="text-sm text-muted-foreground">{greet}, {profile?.name}</div>
+          <div className="text-sm text-muted-foreground">
+            {greet}, {profile?.name}
+          </div>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
             {weight ? `Peso atual: ${weight.toFixed(1)} kg` : "Acompanhe suas metas do dia."}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Objetivo: {profile?.goal ?? "cutting"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Objetivo: {profile?.goal ?? "cutting"}
+          </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="rounded-xl"><Link to="/refeicoes"><Plus className="mr-2 h-4 w-4" />Adicionar refeicao</Link></Button>
+            <Button asChild size="lg" className="rounded-xl">
+              <Link to="/refeicoes">
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar refeicao
+              </Link>
+            </Button>
           </div>
         </section>
 
         {goals ? (
           <section className="grid gap-3 md:grid-cols-2">
-            <MacroCard label="Calorias" current={totals.kcal} goal={goals.calories} unit="kcal" icon={Flame} />
-            <MacroCard label="Proteina" current={totals.protein} goal={goals.protein_g} unit="g" icon={Beef} />
+            <MacroCard
+              label="Calorias"
+              current={totals.kcal}
+              goal={goals.calories}
+              unit="kcal"
+              icon={Flame}
+            />
+            <MacroCard
+              label="Proteina"
+              current={totals.protein}
+              goal={goals.protein_g}
+              unit="g"
+              icon={Beef}
+            />
             <MacroCard label="Carboidratos" current={totals.carbs} goal={goals.carbs_g} unit="g" />
             <MacroCard label="Gorduras" current={totals.fat} goal={goals.fat_g} unit="g" />
           </section>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">Configure suas metas em <Link to="/metas" className="text-primary underline">Metas</Link>.</div>
+          <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+            Configure suas metas em{" "}
+            <Link to="/metas" className="text-primary underline">
+              Metas
+            </Link>
+            .
+          </div>
         )}
 
         <section className="grid gap-3 md:grid-cols-4">
-          <DailyCard label="Registro" value={todayLog ? "feito" : "pendente"} icon={ClipboardList} to="/registro" />
-          <DailyCard label="Agua" value={todayLog?.water_l ? `${Number(todayLog.water_l).toFixed(1)} L` : "-"} icon={Droplets} to="/registro" />
-          <DailyCard label="Sono" value={todayLog?.sleep_hours ? `${Number(todayLog.sleep_hours).toFixed(1)} h` : "-"} icon={Moon} to="/registro" />
-          <DailyCard label="Treino" value={todayLog?.trained ? "sim" : "nao"} icon={Dumbbell} to="/registro" />
+          <DailyCard
+            label="Registro"
+            value={todayLog?.routine_logged ? "feito" : "pendente"}
+            icon={ClipboardList}
+            to="/registro"
+          />
+          <DailyCard
+            label="Agua"
+            value={todayLog?.water_l ? `${Number(todayLog.water_l).toFixed(1)} L` : "-"}
+            icon={Droplets}
+            to="/registro"
+          />
+          <DailyCard
+            label="Sono"
+            value={todayLog?.sleep_hours ? `${Number(todayLog.sleep_hours).toFixed(1)} h` : "-"}
+            icon={Moon}
+            to="/registro"
+          />
+          <DailyCard
+            label="Treino"
+            value={todayLog?.trained ? "sim" : "nao"}
+            icon={Dumbbell}
+            to="/registro"
+          />
         </section>
 
-        <section className="grid gap-3 md:grid-cols-2">
-          <QuickLink to="/refeicoes" icon={Utensils} label="Refeicoes do dia" hint={`${meals.length} registrada${meals.length === 1 ? "" : "s"}`} />
+        <section className="grid gap-3 md:grid-cols-3">
+          <QuickLink
+            to="/refeicoes"
+            icon={Utensils}
+            label="Refeicoes do dia"
+            hint={`${meals.length} registrada${meals.length === 1 ? "" : "s"}`}
+          />
           <QuickLink to="/evolucao" icon={LineChart} label="Evolucao" hint="Historico de peso" />
+          <QuickLink
+            to="/medidas"
+            icon={Ruler}
+            label="Medidas corporais"
+            hint="Circunferencias e notas"
+          />
         </section>
       </div>
     </AppShell>
   );
 }
 
-function DailyCard({ label, value, icon: Icon, to }: { label: string; value: string; icon: any; to: string }) {
+function DailyCard({
+  label,
+  value,
+  icon: Icon,
+  to,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  to: string;
+}) {
   return (
-    <Link to={to} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent"><Icon className="h-5 w-5" /></div>
+    <Link
+      to={to}
+      className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent">
+        <Icon className="h-5 w-5" />
+      </div>
       <div>
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="text-sm font-semibold">{value}</div>
@@ -115,25 +209,59 @@ function DailyCard({ label, value, icon: Icon, to }: { label: string; value: str
   );
 }
 
-function MacroCard({ label, current, goal, unit, icon: Icon }: { label: string; current: number; goal: number; unit: string; icon?: any }) {
+function MacroCard({
+  label,
+  current,
+  goal,
+  unit,
+  icon: Icon,
+}: {
+  label: string;
+  current: number;
+  goal: number;
+  unit: string;
+  icon?: LucideIcon;
+}) {
   const pct = goal > 0 ? Math.min(100, (current / goal) * 100) : 0;
   const remaining = Math.max(0, goal - current);
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">{Icon && <Icon className="h-3.5 w-3.5" />}{label}</span>
-        <span>{current} / {goal} {unit}</span>
+        <span className="inline-flex items-center gap-1.5">
+          {Icon && <Icon className="h-3.5 w-3.5" />}
+          {label}
+        </span>
+        <span>
+          {current} / {goal} {unit}
+        </span>
       </div>
       <Progress value={pct} className="mt-3 h-2.5" />
-      <div className="mt-2 text-xs text-muted-foreground">{remaining > 0 ? `Faltam ${remaining.toFixed(1)} ${unit}` : "Meta atingida"}</div>
+      <div className="mt-2 text-xs text-muted-foreground">
+        {remaining > 0 ? `Faltam ${remaining.toFixed(1)} ${unit}` : "Meta atingida"}
+      </div>
     </div>
   );
 }
 
-function QuickLink({ to, icon: Icon, label, hint }: { to: string; icon: any; label: string; hint: string }) {
+function QuickLink({
+  to,
+  icon: Icon,
+  label,
+  hint,
+}: {
+  to: string;
+  icon: LucideIcon;
+  label: string;
+  hint: string;
+}) {
   return (
-    <Link to={to} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary"><Icon className="h-5 w-5" /></div>
+    <Link
+      to={to}
+      className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
+        <Icon className="h-5 w-5" />
+      </div>
       <div>
         <div className="text-sm font-semibold">{label}</div>
         <div className="text-xs text-muted-foreground">{hint}</div>

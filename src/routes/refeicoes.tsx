@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,11 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Sparkles, Trash2 } from "lucide-react";
-import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Sparkles, Trash2, Pencil, Apple } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { calcMacros, sumMacros, todayIso, type Meal, type MealItem } from "@/lib/dallas";
+import { syncDailyLogNutrition } from "@/lib/dallas-data";
+import { calcMacros, sumMacros, todayIso, type Food, type Meal, type MealItem } from "@/lib/dallas";
 
 export const Route = createFileRoute("/refeicoes")({
   head: () => ({ meta: [{ title: "Refeicoes - Projeto Dallas" }] }),
@@ -23,7 +37,10 @@ function Refeicoes() {
   const qc = useQueryClient();
   const [date, setDate] = useState(todayIso());
   const [newMealOpen, setNewMealOpen] = useState(false);
-  const [addItemMealId, setAddItemMealId] = useState<string | null>(null);
+  const [addTextMealId, setAddTextMealId] = useState<string | null>(null);
+  const [addFoodMealId, setAddFoodMealId] = useState<string | null>(null);
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
+  const [editingItem, setEditingItem] = useState<MealItem | null>(null);
 
   const { data: meals = [] } = useQuery({
     queryKey: ["meals", user?.id, date],
@@ -32,6 +49,7 @@ function Refeicoes() {
       const { data, error } = await supabase
         .from("meals")
         .select("*, meal_items(*)")
+        .eq("user_id", user!.id)
         .eq("meal_date", date)
         .order("meal_type", { ascending: true });
       if (error) throw error;
@@ -39,16 +57,38 @@ function Refeicoes() {
     },
   });
 
+  const { data: foods = [] } = useQuery({
+    queryKey: ["foods", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("foods")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("name");
+      if (error) throw error;
+      return data as Food[];
+    },
+  });
+
+  async function invalidateDay() {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["meals"] }),
+      qc.invalidateQueries({ queryKey: ["daily_log"] }),
+      qc.invalidateQueries({ queryKey: ["daily_logs"] }),
+    ]);
+  }
+
   const createMeal = useMutation({
-    mutationFn: async (m: { meal_type: string; itemsText: string }) => {
+    mutationFn: async (meal: { meal_type: string; itemsText: string }) => {
       const { data, error } = await supabase
         .from("meals")
-        .insert({ user_id: user!.id, meal_date: date, meal_type: m.meal_type })
+        .insert({ user_id: user!.id, meal_date: date, meal_type: meal.meal_type })
         .select("id")
         .single();
       if (error) throw error;
 
-      const items = parseMealItems(m.itemsText);
+      const items = parseMealItems(meal.itemsText);
       if (items.length > 0) {
         const { error: itemsError } = await supabase.from("meal_items").insert(
           items.map((item) => ({
@@ -65,29 +105,56 @@ function Refeicoes() {
         );
         if (itemsError) throw itemsError;
       }
+
+      await syncDailyLogNutrition(user!.id, date);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); setNewMealOpen(false); toast.success("Refeicao registrada"); },
-    onError: (e: any) => toast.error(e.message),
+    onSuccess: () => {
+      invalidateDay();
+      setNewMealOpen(false);
+      toast.success("Refeicao registrada");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const updateMeal = useMutation({
+    mutationFn: async (meal: { id: string; meal_type: string }) => {
+      const { error } = await supabase
+        .from("meals")
+        .update({ meal_type: meal.meal_type })
+        .eq("user_id", user!.id)
+        .eq("id", meal.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateDay();
+      setEditingMeal(null);
+      toast.success("Refeicao atualizada");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
   });
 
   const deleteMeal = useMutation({
     mutationFn: async (id: string) => {
-      const { error: itemsError } = await supabase.from("meal_items").delete().eq("meal_id", id);
-      if (itemsError) throw itemsError;
-      const { error } = await supabase.from("meals").delete().eq("id", id);
+      const { error } = await supabase.from("meals").delete().eq("user_id", user!.id).eq("id", id);
       if (error) throw error;
+      await syncDailyLogNutrition(user!.id, date);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); toast.success("Refeicao excluida"); },
+    onSuccess: () => {
+      invalidateDay();
+      toast.success("Refeicao excluida");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
   });
 
-  const addItem = useMutation({
-    mutationFn: async (i: { meal_id: string; itemsText: string }) => {
-      const items = parseMealItems(i.itemsText);
+  const addTextItems = useMutation({
+    mutationFn: async (input: { meal_id: string; itemsText: string }) => {
+      const items = parseMealItems(input.itemsText);
       if (items.length === 0) throw new Error("Digite pelo menos um item");
+
       const { error } = await supabase.from("meal_items").insert(
         items.map((item) => ({
           user_id: user!.id,
-          meal_id: i.meal_id,
+          meal_id: input.meal_id,
           food_id: null,
           quantity_g: item.grams,
           food_name: item.name,
@@ -98,14 +165,84 @@ function Refeicoes() {
         })),
       );
       if (error) throw error;
+      await syncDailyLogNutrition(user!.id, date);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); setAddItemMealId(null); toast.success("Itens adicionados"); },
-    onError: (e: any) => toast.error(e.message),
+    onSuccess: () => {
+      invalidateDay();
+      setAddTextMealId(null);
+      toast.success("Itens adicionados");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const addFoodItem = useMutation({
+    mutationFn: async (input: { meal_id: string; food_id: string; grams: number }) => {
+      const food = foods.find((item) => item.id === input.food_id);
+      if (!food) throw new Error("Alimento nao encontrado");
+      if (!Number.isFinite(input.grams) || input.grams <= 0) {
+        throw new Error("Informe uma quantidade maior que zero");
+      }
+
+      const { error } = await supabase.from("meal_items").insert({
+        user_id: user!.id,
+        meal_id: input.meal_id,
+        food_id: food.id,
+        quantity_g: input.grams,
+        food_name: food.name,
+        calories_per_100g: food.calories_per_100g,
+        protein_per_100g: food.protein_per_100g,
+        carbs_per_100g: food.carbs_per_100g,
+        fat_per_100g: food.fat_per_100g,
+      });
+      if (error) throw error;
+      await syncDailyLogNutrition(user!.id, date);
+    },
+    onSuccess: () => {
+      invalidateDay();
+      setAddFoodMealId(null);
+      toast.success("Alimento adicionado");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const updateItem = useMutation({
+    mutationFn: async (input: { id: string; food_name: string; quantity_g: number }) => {
+      if (!input.food_name.trim()) throw new Error("Informe o nome do item");
+      if (!Number.isFinite(input.quantity_g) || input.quantity_g < 0) {
+        throw new Error("A quantidade nao pode ser negativa");
+      }
+
+      const { error } = await supabase
+        .from("meal_items")
+        .update({ food_name: input.food_name.trim(), quantity_g: input.quantity_g })
+        .eq("user_id", user!.id)
+        .eq("id", input.id);
+      if (error) throw error;
+      await syncDailyLogNutrition(user!.id, date);
+    },
+    onSuccess: () => {
+      invalidateDay();
+      setEditingItem(null);
+      toast.success("Item atualizado");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
   });
 
   const deleteItem = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("meal_items").delete().eq("id", id); if (error) throw error; },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["meals"] }),
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("meal_items")
+        .delete()
+        .eq("user_id", user!.id)
+        .eq("id", id);
+      if (error) throw error;
+      await syncDailyLogNutrition(user!.id, date);
+    },
+    onSuccess: () => {
+      invalidateDay();
+      toast.success("Item excluido");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
   });
 
   const estimateMeal = useMutation({
@@ -120,7 +257,8 @@ function Refeicoes() {
           "content-type": "application/json",
           authorization: `Bearer ${token}`,
           "x-supabase-url": import.meta.env.VITE_SUPABASE_URL,
-          "x-supabase-key": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY,
+          "x-supabase-key":
+            import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
           mealName: meal.meal_type,
@@ -136,8 +274,6 @@ function Refeicoes() {
       if (!response.ok) throw new Error(payload.error ?? "Falha ao calcular macros");
 
       const estimates = (payload.items ?? []) as MacroEstimate[];
-      const estimatesById = new Map(estimates.map((item) => [item.id, item]));
-
       await Promise.all(
         estimates.map((item) => {
           const original = meal.meal_items.find((mealItem) => mealItem.id === item.id);
@@ -153,6 +289,7 @@ function Refeicoes() {
               carbs_per_100g: +(item.carbs_g * factor).toFixed(1),
               fat_per_100g: +(item.fat_g * factor).toFixed(1),
             })
+            .eq("user_id", user!.id)
             .eq("id", item.id)
             .then(({ error }) => {
               if (error) throw error;
@@ -160,38 +297,25 @@ function Refeicoes() {
         }),
       );
 
-      const mealsWithEstimatedMacros = meals.map((existingMeal) => ({
-        ...existingMeal,
-        meal_items: existingMeal.id === meal.id
-          ? existingMeal.meal_items.map((mealItem) => applyEstimateToMealItem(mealItem, estimatesById.get(mealItem.id)))
-          : existingMeal.meal_items,
-      }));
-      const dayTotals = sumMacros(
-        mealsWithEstimatedMacros.flatMap((existingMeal) => existingMeal.meal_items.map((item) => calcMacros(item, Number(item.quantity_g)))),
-      );
-
-      const { error: logError } = await supabase.from("daily_logs").upsert({
-        user_id: user!.id,
-        log_date: date,
-        calories: dayTotals.kcal,
-        protein_g: dayTotals.protein,
-      }, { onConflict: "user_id,log_date" });
-      if (logError) throw logError;
-
+      await syncDailyLogNutrition(user!.id, date);
       return estimates;
     },
     onSuccess: (items) => {
-      qc.invalidateQueries({ queryKey: ["meals"] });
-      qc.invalidateQueries({ queryKey: ["daily_log"] });
-      qc.invalidateQueries({ queryKey: ["daily_logs"] });
+      invalidateDay();
       const lowConfidence = items.filter((item) => item.confidence === "baixa").length;
-      toast.success(lowConfidence > 0 ? `Macros calculados. ${lowConfidence} item(ns) com baixa confianca.` : "Macros calculados");
+      toast.success(
+        lowConfidence > 0
+          ? `Macros calculados. ${lowConfidence} item(ns) com baixa confianca.`
+          : "Macros calculados",
+      );
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (error) => toast.error(errorMessage(error)),
   });
 
   const totals = sumMacros(
-    meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g))))
+    meals.flatMap((meal) =>
+      meal.meal_items.map((item) => calcMacros(item, Number(item.quantity_g))),
+    ),
   );
 
   return (
@@ -199,29 +323,60 @@ function Refeicoes() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Refeicoes</h1>
-          <p className="text-sm text-muted-foreground">Digite o que comeu, uma linha por item.</p>
+          <p className="text-sm text-muted-foreground">
+            Registre por texto livre, catalogo ou estimativa com IA.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-auto" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            className="w-auto"
+          />
+          <Button asChild variant="outline" className="rounded-xl">
+            <Link to="/alimentos">
+              <Apple className="mr-2 h-4 w-4" />
+              Alimentos
+            </Link>
+          </Button>
           <Dialog open={newMealOpen} onOpenChange={setNewMealOpen}>
-            <DialogTrigger asChild><Button className="rounded-xl"><Plus className="mr-2 h-4 w-4" />Nova refeicao</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button className="rounded-xl">
+                <Plus className="mr-2 h-4 w-4" />
+                Nova refeicao
+              </Button>
+            </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Nova refeicao</DialogTitle></DialogHeader>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget);
-                createMeal.mutate({ meal_type: String(f.get("meal_type")), itemsText: String(f.get("items")) });
-              }} className="space-y-3">
-                <div><Label className="text-xs">Nome da refeicao</Label><Input name="meal_type" required defaultValue={`Ref ${meals.length + 1}`} /></div>
+              <DialogHeader>
+                <DialogTitle>Nova refeicao</DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const form = new FormData(event.currentTarget);
+                  createMeal.mutate({
+                    meal_type: String(form.get("meal_type")),
+                    itemsText: String(form.get("items")),
+                  });
+                }}
+                className="space-y-3"
+              >
                 <div>
-                  <Label className="text-xs">Itens</Label>
+                  <Label className="text-xs">Nome da refeicao</Label>
+                  <Input name="meal_type" required defaultValue={`Ref ${meals.length + 1}`} />
+                </div>
+                <div>
+                  <Label className="text-xs">Itens por texto livre</Label>
                   <Textarea
                     name="items"
                     className="min-h-36"
                     placeholder={"200g iogurte morango tirol zero\n40g whey dux chocolate branco"}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={createMeal.isPending}>{createMeal.isPending ? "Registrando..." : "Registrar refeicao"}</Button>
+                <Button type="submit" className="w-full" disabled={createMeal.isPending}>
+                  {createMeal.isPending ? "Registrando..." : "Registrar refeicao"}
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -240,66 +395,181 @@ function Refeicoes() {
           <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
             Nenhuma refeicao registrada nesta data.
           </div>
-        ) : meals.map((m) => {
-          const mealMacros = sumMacros(m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g))));
-          return (
-            <article key={m.id} className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-base font-semibold">{m.meal_type}</h3>
+        ) : (
+          meals.map((meal) => {
+            const mealMacros = sumMacros(
+              meal.meal_items.map((item) => calcMacros(item, Number(item.quantity_g))),
+            );
+            return (
+              <article key={meal.id} className="rounded-2xl border border-border bg-card p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-semibold">{meal.meal_type}</h3>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {meal.meal_items.length} item(ns)
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-semibold text-warning">{mealMacros.kcal} kcal</span>
+                    <span className="font-semibold text-accent">P {mealMacros.protein}g</span>
+                    <span className="text-muted-foreground">
+                      C {mealMacros.carbs}g / G {mealMacros.fat}g
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-lg"
+                      disabled={estimateMeal.isPending || meal.meal_items.length === 0}
+                      onClick={() => estimateMeal.mutate(meal)}
+                    >
+                      <Sparkles className="mr-1 h-3.5 w-3.5" />
+                      {estimateMeal.isPending && estimateMeal.variables?.id === meal.id
+                        ? "Calculando..."
+                        : "Calcular"}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setEditingMeal(meal)}
+                      aria-label="Editar refeicao"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => deleteMeal.mutate(meal.id)}
+                      aria-label="Excluir refeicao"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="text-warning font-semibold">{mealMacros.kcal} kcal</span>
-                  <span className="text-accent font-semibold">P {mealMacros.protein}g</span>
-                  <span className="text-muted-foreground">C {mealMacros.carbs}g / G {mealMacros.fat}g</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-lg"
-                    disabled={estimateMeal.isPending || m.meal_items.length === 0}
-                    onClick={() => estimateMeal.mutate(m)}
+
+                <ul className="mt-3 space-y-1.5">
+                  {meal.meal_items.map((item) => {
+                    const macros = calcMacros(item, Number(item.quantity_g));
+                    return (
+                      <li
+                        key={item.id}
+                        className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{item.food_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {Number(item.quantity_g)}g
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2 text-xs">
+                          <span>{macros.kcal} kcal</span>
+                          <span className="text-accent">P {macros.protein}</span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setEditingItem(item)}
+                            aria-label="Editar item"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => deleteItem.mutate(item.id)}
+                            aria-label="Excluir item"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Dialog
+                    open={addFoodMealId === meal.id}
+                    onOpenChange={(open) => setAddFoodMealId(open ? meal.id : null)}
                   >
-                    <Sparkles className="mr-1 h-3.5 w-3.5" />
-                    {estimateMeal.isPending && estimateMeal.variables?.id === m.id ? "Calculando..." : "Calcular"}
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => deleteMeal.mutate(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-lg">
+                        <Apple className="mr-1 h-3.5 w-3.5" />
+                        Do catalogo
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Adicionar do catalogo</DialogTitle>
+                      </DialogHeader>
+                      <AddFoodForm
+                        foods={foods}
+                        pending={addFoodItem.isPending}
+                        onSubmit={(food_id, grams) =>
+                          addFoodItem.mutate({ meal_id: meal.id, food_id, grams })
+                        }
+                      />
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog
+                    open={addTextMealId === meal.id}
+                    onOpenChange={(open) => setAddTextMealId(open ? meal.id : null)}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-lg">
+                        <Plus className="mr-1 h-3.5 w-3.5" />
+                        Texto livre
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Adicionar por texto livre</DialogTitle>
+                      </DialogHeader>
+                      <AddTextItemsForm
+                        onSubmit={(itemsText) =>
+                          addTextItems.mutate({ meal_id: meal.id, itemsText })
+                        }
+                        pending={addTextItems.isPending}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </div>
-              </div>
-
-              <ul className="mt-3 space-y-1.5">
-                {m.meal_items.map((it) => {
-                  const macros = calcMacros(it, Number(it.quantity_g));
-                  return (
-                    <li key={it.id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2 text-sm">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{it.food_name}</div>
-                        <div className="text-xs text-muted-foreground">{Number(it.quantity_g)}g</div>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs">
-                        <span>{macros.kcal} kcal</span>
-                        <span className="text-accent">P{macros.protein}</span>
-                        <Button size="icon" variant="ghost" onClick={() => deleteItem.mutate(it.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <Dialog open={addItemMealId === m.id} onOpenChange={(o) => setAddItemMealId(o ? m.id : null)}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="mt-3 rounded-lg">
-                    <Plus className="mr-1 h-3.5 w-3.5" />Adicionar itens
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Adicionar itens</DialogTitle></DialogHeader>
-                  <AddItemsForm onSubmit={(itemsText) => addItem.mutate({ meal_id: m.id, itemsText })} pending={addItem.isPending} />
-                </DialogContent>
-              </Dialog>
-            </article>
-          );
-        })}
+              </article>
+            );
+          })
+        )}
       </section>
+
+      <Dialog open={Boolean(editingMeal)} onOpenChange={(open) => !open && setEditingMeal(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar refeicao</DialogTitle>
+          </DialogHeader>
+          {editingMeal && (
+            <EditMealForm
+              meal={editingMeal}
+              pending={updateMeal.isPending}
+              onSubmit={(meal_type) => updateMeal.mutate({ id: editingMeal.id, meal_type })}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editingItem)} onOpenChange={(open) => !open && setEditingItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar item</DialogTitle>
+          </DialogHeader>
+          {editingItem && (
+            <EditItemForm
+              item={editingItem}
+              pending={updateItem.isPending}
+              onSubmit={(food_name, quantity_g) =>
+                updateItem.mutate({ id: editingItem.id, food_name, quantity_g })
+              }
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
@@ -314,35 +584,204 @@ type MacroEstimate = {
   note?: string;
 };
 
-function applyEstimateToMealItem(item: MealItem, estimate: MacroEstimate | undefined): MealItem {
-  const grams = Number(item.quantity_g);
-  if (!estimate || grams <= 0) return item;
+function AddFoodForm({
+  foods,
+  onSubmit,
+  pending,
+}: {
+  foods: Food[];
+  onSubmit: (foodId: string, grams: number) => void;
+  pending: boolean;
+}) {
+  const [foodId, setFoodId] = useState(foods[0]?.id ?? "");
+  const [grams, setGrams] = useState(100);
+  const selected = foods.find((food) => food.id === foodId);
 
-  const factor = 100 / grams;
-  return {
-    ...item,
-    calories_per_100g: +(estimate.calories * factor).toFixed(1),
-    protein_per_100g: +(estimate.protein_g * factor).toFixed(1),
-    carbs_per_100g: +(estimate.carbs_g * factor).toFixed(1),
-    fat_per_100g: +(estimate.fat_g * factor).toFixed(1),
-  };
+  useEffect(() => {
+    if (!foodId && foods[0]) setFoodId(foods[0].id);
+  }, [foodId, foods]);
+
+  if (foods.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+          Cadastre alimentos para usar o catalogo sem depender da IA.
+        </div>
+        <Button asChild className="w-full">
+          <Link to="/alimentos">Abrir alimentos</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const preview = selected ? calcMacros(selected, grams) : null;
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(foodId, grams);
+      }}
+      className="space-y-3"
+    >
+      <div>
+        <Label className="text-xs">Alimento</Label>
+        <Select value={foodId} onValueChange={setFoodId}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {foods.map((food) => (
+              <SelectItem key={food.id} value={food.id}>
+                {food.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="text-xs">Quantidade (g)</Label>
+        <Input
+          type="number"
+          step="0.1"
+          min="0.1"
+          value={grams}
+          onChange={(event) => setGrams(Number(event.target.value))}
+        />
+      </div>
+      {preview && (
+        <div className="grid grid-cols-4 gap-2 rounded-xl bg-muted/30 p-3 text-center text-xs">
+          <PreviewStat label="kcal" value={preview.kcal} />
+          <PreviewStat label="P" value={preview.protein} />
+          <PreviewStat label="C" value={preview.carbs} />
+          <PreviewStat label="G" value={preview.fat} />
+        </div>
+      )}
+      <Button type="submit" className="w-full" disabled={pending || !foodId || grams <= 0}>
+        {pending ? "Adicionando..." : "Adicionar alimento"}
+      </Button>
+    </form>
+  );
 }
 
-function AddItemsForm({ onSubmit, pending }: { onSubmit: (itemsText: string) => void; pending: boolean }) {
+function AddTextItemsForm({
+  onSubmit,
+  pending,
+}: {
+  onSubmit: (itemsText: string) => void;
+  pending: boolean;
+}) {
   const [itemsText, setItemsText] = useState("");
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(itemsText); }} className="space-y-3">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(itemsText);
+      }}
+      className="space-y-3"
+    >
       <div>
         <Label className="text-xs">Itens</Label>
         <Textarea
           value={itemsText}
-          onChange={(e) => setItemsText(e.target.value)}
+          onChange={(event) => setItemsText(event.target.value)}
           className="min-h-36"
           placeholder={"200g arroz branco\n200g frango desfiado"}
         />
       </div>
-      <Button type="submit" className="w-full" disabled={pending || parseMealItems(itemsText).length === 0}>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={pending || parseMealItems(itemsText).length === 0}
+      >
         {pending ? "Adicionando..." : "Adicionar itens"}
+      </Button>
+    </form>
+  );
+}
+
+function EditMealForm({
+  meal,
+  pending,
+  onSubmit,
+}: {
+  meal: Meal;
+  pending: boolean;
+  onSubmit: (mealType: string) => void;
+}) {
+  const [mealType, setMealType] = useState(meal.meal_type);
+
+  useEffect(() => {
+    setMealType(meal.meal_type);
+  }, [meal]);
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(mealType.trim());
+      }}
+      className="space-y-3"
+    >
+      <div>
+        <Label className="text-xs">Nome da refeicao</Label>
+        <Input required value={mealType} onChange={(event) => setMealType(event.target.value)} />
+      </div>
+      <Button type="submit" className="w-full" disabled={pending || !mealType.trim()}>
+        {pending ? "Salvando..." : "Salvar refeicao"}
+      </Button>
+    </form>
+  );
+}
+
+function EditItemForm({
+  item,
+  pending,
+  onSubmit,
+}: {
+  item: MealItem;
+  pending: boolean;
+  onSubmit: (foodName: string, quantityG: number) => void;
+}) {
+  const [foodName, setFoodName] = useState(item.food_name);
+  const [quantityG, setQuantityG] = useState(Number(item.quantity_g));
+  const preview = calcMacros(item, quantityG);
+
+  useEffect(() => {
+    setFoodName(item.food_name);
+    setQuantityG(Number(item.quantity_g));
+  }, [item]);
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(foodName, quantityG);
+      }}
+      className="space-y-3"
+    >
+      <div>
+        <Label className="text-xs">Item</Label>
+        <Input required value={foodName} onChange={(event) => setFoodName(event.target.value)} />
+      </div>
+      <div>
+        <Label className="text-xs">Quantidade (g)</Label>
+        <Input
+          type="number"
+          step="0.1"
+          min="0"
+          value={quantityG}
+          onChange={(event) => setQuantityG(Number(event.target.value))}
+        />
+      </div>
+      <div className="grid grid-cols-4 gap-2 rounded-xl bg-muted/30 p-3 text-center text-xs">
+        <PreviewStat label="kcal" value={preview.kcal} />
+        <PreviewStat label="P" value={preview.protein} />
+        <PreviewStat label="C" value={preview.carbs} />
+        <PreviewStat label="G" value={preview.fat} />
+      </div>
+      <Button type="submit" className="w-full" disabled={pending || !foodName.trim()}>
+        {pending ? "Salvando..." : "Salvar item"}
       </Button>
     </form>
   );
@@ -365,7 +804,22 @@ function Total({ label, value, unit }: { label: string; value: number; unit: str
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-semibold">{value} <span className="text-sm font-normal text-muted-foreground">{unit}</span></div>
+      <div className="mt-1 text-xl font-semibold">
+        {value} <span className="text-sm font-normal text-muted-foreground">{unit}</span>
+      </div>
     </div>
   );
+}
+
+function PreviewStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="font-semibold">{value}</div>
+      <div className="text-[10px] text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Erro inesperado";
 }

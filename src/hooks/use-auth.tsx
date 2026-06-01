@@ -22,7 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Listener primeiro para não perder eventos
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
     });
@@ -67,7 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, resetPassword, updatePassword, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, loading, signIn, signUp, resetPassword, updatePassword, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

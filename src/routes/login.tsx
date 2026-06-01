@@ -88,11 +88,23 @@ function LoginPage() {
               <form onSubmit={handleSignIn} className="mt-4 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signin-email">Email</Label>
-                  <Input id="signin-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input
+                    id="signin-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signin-password">Senha</Label>
-                  <Input id="signin-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <Input
+                    id="signin-password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                 </div>
                 <button
                   type="button"
@@ -112,11 +124,24 @@ function LoginPage() {
               <form onSubmit={handleSignUp} className="mt-4 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
-                  <Input id="signup-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
-                  <Input id="signup-password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                   <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>

@@ -79,7 +79,6 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/alimentos': typeof AlimentosRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
@@ -89,10 +88,10 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/refeicoes': typeof RefeicoesRoute
   '/registro': typeof RegistroRoute
+  '/reset-password': typeof ResetPasswordRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/alimentos': typeof AlimentosRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
@@ -102,11 +101,11 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/refeicoes': typeof RefeicoesRoute
   '/registro': typeof RegistroRoute
+  '/reset-password': typeof ResetPasswordRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/alimentos': typeof AlimentosRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
@@ -116,12 +115,12 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/refeicoes': typeof RefeicoesRoute
   '/registro': typeof RegistroRoute
+  '/reset-password': typeof ResetPasswordRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/reset-password'
     | '/alimentos'
     | '/evolucao'
     | '/insights'
@@ -131,10 +130,10 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/refeicoes'
     | '/registro'
+    | '/reset-password'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/reset-password'
     | '/alimentos'
     | '/evolucao'
     | '/insights'
@@ -144,10 +143,10 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/refeicoes'
     | '/registro'
+    | '/reset-password'
   id:
     | '__root__'
     | '/'
-    | '/reset-password'
     | '/alimentos'
     | '/evolucao'
     | '/insights'
@@ -157,11 +156,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/refeicoes'
     | '/registro'
+    | '/reset-password'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
   AlimentosRoute: typeof AlimentosRoute
   EvolucaoRoute: typeof EvolucaoRoute
   InsightsRoute: typeof InsightsRoute
@@ -171,6 +170,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   RefeicoesRoute: typeof RefeicoesRoute
   RegistroRoute: typeof RegistroRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -257,7 +257,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
   AlimentosRoute: AlimentosRoute,
   EvolucaoRoute: EvolucaoRoute,
   InsightsRoute: InsightsRoute,
@@ -267,7 +266,18 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   RefeicoesRoute: RefeicoesRoute,
   RegistroRoute: RegistroRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

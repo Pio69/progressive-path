@@ -7,7 +7,13 @@ import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -22,38 +28,48 @@ function Metas() {
   const qc = useQueryClient();
 
   const [form, setForm] = useState({
-    name: "", height_cm: 0, goal: "cutting",
-    calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0,
+    name: "",
+    height_cm: 0,
+    goal: "cutting",
+    calories: 0,
+    protein_g: 0,
+    carbs_g: 0,
+    fat_g: 0,
   });
 
   useEffect(() => {
-    if (profile && goals) {
+    if (profile) {
       setForm({
         name: profile.name ?? "",
         height_cm: Number(profile.height_cm ?? 0),
         goal: profile.goal ?? "cutting",
-        calories: goals.calories,
-        protein_g: goals.protein_g,
-        carbs_g: goals.carbs_g,
-        fat_g: goals.fat_g,
+        calories: goals?.calories ?? 0,
+        protein_g: goals?.protein_g ?? 0,
+        carbs_g: goals?.carbs_g ?? 0,
+        fat_g: goals?.fat_g ?? 0,
       });
     }
   }, [profile, goals]);
 
   const save = useMutation({
     mutationFn: async () => {
-      const { error: pe } = await supabase.from("profiles").update({
+      const { error: pe } = await supabase.from("profiles").upsert({
+        id: user!.id,
         name: form.name,
         height_cm: form.height_cm,
         goal: form.goal,
-      }).eq("id", user!.id);
+      });
       if (pe) throw pe;
-      const { error: ge } = await supabase.from("daily_goals").update({
-        calories: form.calories,
-        protein_g: form.protein_g,
-        carbs_g: form.carbs_g,
-        fat_g: form.fat_g,
-      }).eq("user_id", user!.id);
+      const { error: ge } = await supabase.from("daily_goals").upsert(
+        {
+          user_id: user!.id,
+          calories: form.calories,
+          protein_g: form.protein_g,
+          carbs_g: form.carbs_g,
+          fat_g: form.fat_g,
+        },
+        { onConflict: "user_id" },
+      );
       if (ge) throw ge;
     },
     onSuccess: () => {
@@ -61,7 +77,7 @@ function Metas() {
       qc.invalidateQueries({ queryKey: ["daily_goals"] });
       toast.success("Metas atualizadas");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (error) => toast.error(errorMessage(error)),
   });
 
   return (
@@ -71,15 +87,34 @@ function Metas() {
         <p className="text-sm text-muted-foreground">Atualize seus dados fixos e metas diarias.</p>
       </header>
 
-      <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-6">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save.mutate();
+        }}
+        className="space-y-6"
+      >
         <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
           <h2 className="text-sm font-semibold text-muted-foreground">Perfil</h2>
-          <div><Label className="text-xs">Nome</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div><Label className="text-xs">Altura (cm)</Label><Input type="number" step="0.1" value={form.height_cm} onChange={(e) => setForm({ ...form, height_cm: +e.target.value })} /></div>
+          <div>
+            <Label className="text-xs">Nome</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <Label className="text-xs">Altura (cm)</Label>
+            <Input
+              type="number"
+              step="0.1"
+              value={form.height_cm}
+              onChange={(e) => setForm({ ...form, height_cm: +e.target.value })}
+            />
+          </div>
           <div>
             <Label className="text-xs">Objetivo</Label>
             <Select value={form.goal} onValueChange={(v) => setForm({ ...form, goal: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="cutting">Cutting</SelectItem>
                 <SelectItem value="manutencao">Manutencao</SelectItem>
@@ -92,15 +127,49 @@ function Metas() {
         <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
           <h2 className="text-sm font-semibold text-muted-foreground">Metas diarias</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div><Label className="text-xs">Calorias</Label><Input type="number" value={form.calories} onChange={(e) => setForm({ ...form, calories: +e.target.value })} /></div>
-            <div><Label className="text-xs">Proteina (g)</Label><Input type="number" value={form.protein_g} onChange={(e) => setForm({ ...form, protein_g: +e.target.value })} /></div>
-            <div><Label className="text-xs">Carboidratos (g)</Label><Input type="number" value={form.carbs_g} onChange={(e) => setForm({ ...form, carbs_g: +e.target.value })} /></div>
-            <div><Label className="text-xs">Gorduras (g)</Label><Input type="number" value={form.fat_g} onChange={(e) => setForm({ ...form, fat_g: +e.target.value })} /></div>
+            <div>
+              <Label className="text-xs">Calorias</Label>
+              <Input
+                type="number"
+                value={form.calories}
+                onChange={(e) => setForm({ ...form, calories: +e.target.value })}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Proteina (g)</Label>
+              <Input
+                type="number"
+                value={form.protein_g}
+                onChange={(e) => setForm({ ...form, protein_g: +e.target.value })}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Carboidratos (g)</Label>
+              <Input
+                type="number"
+                value={form.carbs_g}
+                onChange={(e) => setForm({ ...form, carbs_g: +e.target.value })}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Gorduras (g)</Label>
+              <Input
+                type="number"
+                value={form.fat_g}
+                onChange={(e) => setForm({ ...form, fat_g: +e.target.value })}
+              />
+            </div>
           </div>
         </section>
 
-        <Button type="submit" size="lg" disabled={save.isPending}>{save.isPending ? "Salvando..." : "Salvar alteracoes"}</Button>
+        <Button type="submit" size="lg" disabled={save.isPending}>
+          {save.isPending ? "Salvando..." : "Salvar alteracoes"}
+        </Button>
       </form>
     </AppShell>
   );
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Erro inesperado";
 }

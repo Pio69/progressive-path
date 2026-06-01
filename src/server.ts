@@ -14,7 +14,7 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => ((m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry)),
+      (m) => (m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry),
     );
   }
   return serverEntryPromise;
@@ -106,15 +106,22 @@ async function handleApiRequest(request: Request, env: unknown) {
   const url = new URL(request.url);
   if (url.pathname === "/api/env-check") {
     const runtimeEnv = getRuntimeEnv(env);
+    if (runtimeEnv.ENABLE_ENV_CHECK !== "true") {
+      return Response.json({ error: "Nao encontrado" }, { status: 404 });
+    }
+    if (request.method !== "GET") {
+      return Response.json({ error: "Metodo nao permitido" }, { status: 405 });
+    }
+
     return Response.json({
       hasGeminiApiKey: Boolean(runtimeEnv.GEMINI_API_KEY),
       hasSupabaseUrl: Boolean(runtimeEnv.SUPABASE_URL || runtimeEnv.VITE_SUPABASE_URL),
       hasSupabaseKey: Boolean(
         runtimeEnv.SUPABASE_PUBLISHABLE_KEY ||
-          runtimeEnv.SUPABASE_ANON_KEY ||
-          runtimeEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
-          runtimeEnv.VITE_SUPABASE_ANON_KEY ||
-          runtimeEnv.VITE_SUPABASE_KEY,
+        runtimeEnv.SUPABASE_ANON_KEY ||
+        runtimeEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
+        runtimeEnv.VITE_SUPABASE_ANON_KEY ||
+        runtimeEnv.VITE_SUPABASE_KEY,
       ),
       knownNames: Object.keys(runtimeEnv)
         .filter((key) => /GEMINI|SUPABASE/i.test(key))
@@ -138,7 +145,9 @@ async function handleApiRequest(request: Request, env: unknown) {
     const model = runtimeEnv.GEMINI_MODEL || "gemini-2.5-flash";
 
     const body = (await request.json()) as EstimateRequest;
-    const items = Array.isArray(body.items) ? body.items.filter((item) => item.id && item.name) : [];
+    const items = Array.isArray(body.items)
+      ? body.items.filter((item) => item.id && item.name)
+      : [];
     if (items.length === 0) {
       return Response.json({ error: "Nenhum item para calcular" }, { status: 400 });
     }
@@ -151,42 +160,48 @@ async function handleApiRequest(request: Request, env: unknown) {
       "",
       `Refeicao: ${body.mealName || "Refeicao"}`,
       "Itens:",
-      ...items.map((item) => `- id=${item.id}; quantidade=${item.grams || "nao informada"}g; alimento=${item.name}`),
+      ...items.map(
+        (item) =>
+          `- id=${item.id}; quantidade=${item.grams || "nao informada"}g; alimento=${item.name}`,
+      ),
     ].join("\n");
 
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              items: {
-                type: "ARRAY",
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
                 items: {
-                  type: "OBJECT",
-                  properties: {
-                    id: { type: "STRING" },
-                    calories: { type: "NUMBER" },
-                    protein_g: { type: "NUMBER" },
-                    carbs_g: { type: "NUMBER" },
-                    fat_g: { type: "NUMBER" },
-                    confidence: { type: "STRING", enum: ["baixa", "media", "alta"] },
-                    note: { type: "STRING" },
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      id: { type: "STRING" },
+                      calories: { type: "NUMBER" },
+                      protein_g: { type: "NUMBER" },
+                      carbs_g: { type: "NUMBER" },
+                      fat_g: { type: "NUMBER" },
+                      confidence: { type: "STRING", enum: ["baixa", "media", "alta"] },
+                      note: { type: "STRING" },
+                    },
+                    required: ["id", "calories", "protein_g", "carbs_g", "fat_g", "confidence"],
                   },
-                  required: ["id", "calories", "protein_g", "carbs_g", "fat_g", "confidence"],
                 },
               },
+              required: ["items"],
             },
-            required: ["items"],
           },
-        },
-      }),
-    });
+        }),
+      },
+    );
 
     if (!geminiResponse.ok) {
       const text = await geminiResponse.text();
@@ -228,7 +243,11 @@ async function requireAuthenticatedUser(request: Request, runtimeEnv: Record<str
   if (!supabaseUrl || !supabaseKey) {
     const missing = [
       ...(!supabaseUrl ? ["SUPABASE_URL ou VITE_SUPABASE_URL"] : []),
-      ...(!supabaseKey ? ["SUPABASE_PUBLISHABLE_KEY, SUPABASE_ANON_KEY, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_SUPABASE_ANON_KEY ou VITE_SUPABASE_KEY"] : []),
+      ...(!supabaseKey
+        ? [
+            "SUPABASE_PUBLISHABLE_KEY, SUPABASE_ANON_KEY, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_SUPABASE_ANON_KEY ou VITE_SUPABASE_KEY",
+          ]
+        : []),
     ];
     throw new Error(`Supabase env faltando: ${missing.join("; ")}`);
   }
@@ -245,14 +264,19 @@ async function requireAuthenticatedUser(request: Request, runtimeEnv: Record<str
 
 function getSupabaseUrlFromToken(token: string) {
   try {
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { iss?: string };
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
+      iss?: string;
+    };
     return payload.iss?.replace(/\/auth\/v1\/?$/, "") ?? "";
   } catch {
     return "";
   }
 }
 
-function normalizeEstimates(estimates: EstimateResponse["items"], originalItems: EstimateRequest["items"]) {
+function normalizeEstimates(
+  estimates: EstimateResponse["items"],
+  originalItems: EstimateRequest["items"],
+) {
   const validIds = new Set(originalItems.map((item) => item.id));
   return (Array.isArray(estimates) ? estimates : [])
     .filter((item) => validIds.has(item.id))
@@ -284,7 +308,9 @@ function parseGeminiError(body: string) {
     // Fall through to generic body handling.
   }
 
-  return body ? `Gemini retornou erro: ${body.slice(0, 300)}` : "Falha ao calcular macros com Gemini";
+  return body
+    ? `Gemini retornou erro: ${body.slice(0, 300)}`
+    : "Falha ao calcular macros com Gemini";
 }
 
 function getRuntimeEnv(env: unknown) {
