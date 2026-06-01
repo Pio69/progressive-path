@@ -17,6 +17,26 @@ export type DailyGoals = {
   fat_g: number;
 };
 
+export type DailyLog = {
+  id: string;
+  user_id: string;
+  log_date: string;
+  weight_kg: number | null;
+  calories: number | null;
+  protein_g: number | null;
+  water_l: number | null;
+  trained: boolean;
+  training_start: string | null;
+  training_end: string | null;
+  training_intensity: string | null;
+  cardio: boolean;
+  sleep_hours: number | null;
+  alcohol: boolean;
+  free_meal: boolean;
+  tags: string[];
+  notes: string | null;
+};
+
 export type Food = {
   id: string;
   user_id: string;

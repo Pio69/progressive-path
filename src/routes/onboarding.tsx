@@ -69,6 +69,14 @@ function Onboarding() {
         weight_kg: form.weight_kg,
       });
 
+      await supabase.from("daily_logs").insert({
+        user_id: user.id,
+        log_date: todayIso(),
+        weight_kg: form.weight_kg,
+        calories: form.calories,
+        protein_g: form.protein_g,
+      });
+
       await qc.invalidateQueries();
       toast.success("Perfil configurado!");
       navigate({ to: "/" });

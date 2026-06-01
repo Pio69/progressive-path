@@ -15,6 +15,12 @@ export type Database = {
         Update: { id?: string; user_id?: string; calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number; created_at?: string | null; updated_at?: string | null }
         Relationships: []
       }
+      daily_logs: {
+        Row: { id: string; user_id: string; log_date: string; weight_kg: number | null; calories: number | null; protein_g: number | null; water_l: number | null; trained: boolean; training_start: string | null; training_end: string | null; training_intensity: string | null; cardio: boolean; sleep_hours: number | null; alcohol: boolean; free_meal: boolean; tags: string[]; notes: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; user_id: string; log_date?: string; weight_kg?: number | null; calories?: number | null; protein_g?: number | null; water_l?: number | null; trained?: boolean; training_start?: string | null; training_end?: string | null; training_intensity?: string | null; cardio?: boolean; sleep_hours?: number | null; alcohol?: boolean; free_meal?: boolean; tags?: string[]; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; user_id?: string; log_date?: string; weight_kg?: number | null; calories?: number | null; protein_g?: number | null; water_l?: number | null; trained?: boolean; training_start?: string | null; training_end?: string | null; training_intensity?: string | null; cardio?: boolean; sleep_hours?: number | null; alcohol?: boolean; free_meal?: boolean; tags?: string[]; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+        Relationships: []
+      }
       foods: {
         Row: { id: string; user_id: string; name: string; calories_per_100g: number; protein_per_100g: number; carbs_per_100g: number; fat_per_100g: number; created_at: string | null; updated_at: string | null }
         Insert: { id?: string; user_id: string; name: string; calories_per_100g?: number; protein_per_100g?: number; carbs_per_100g?: number; fat_per_100g?: number; created_at?: string | null; updated_at?: string | null }

@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Flame, Beef, Plus, Apple, Utensils, LineChart } from "lucide-react";
+import { Flame, Beef, Plus, Apple, Utensils, LineChart, ClipboardList, Moon, Droplets, Dumbbell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
-import { calcMacros, sumMacros, todayIso, type Food, type Meal, type MealItem } from "@/lib/dallas";
+import { calcMacros, sumMacros, todayIso, type DailyLog, type Food, type Meal, type MealItem } from "@/lib/dallas";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,6 +35,21 @@ function Home() {
         .eq("meal_date", today);
       if (error) throw error;
       return data as (Meal & { meal_items: (MealItem & { foods: Food })[] })[];
+    },
+  });
+
+  const { data: todayLog } = useQuery({
+    queryKey: ["daily_log", user?.id, today],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_logs")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("log_date", today)
+        .maybeSingle();
+      if (error) throw error;
+      return data as DailyLog | null;
     },
   });
 
@@ -73,6 +88,13 @@ function Home() {
           <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">Configure suas metas em <Link to="/metas" className="text-primary underline">Metas</Link>.</div>
         )}
 
+        <section className="grid gap-3 md:grid-cols-4">
+          <DailyCard label="Registro" value={todayLog ? "feito" : "pendente"} icon={ClipboardList} to="/registro" />
+          <DailyCard label="Agua" value={todayLog?.water_l ? `${Number(todayLog.water_l).toFixed(1)} L` : "-"} icon={Droplets} to="/registro" />
+          <DailyCard label="Sono" value={todayLog?.sleep_hours ? `${Number(todayLog.sleep_hours).toFixed(1)} h` : "-"} icon={Moon} to="/registro" />
+          <DailyCard label="Treino" value={todayLog?.trained ? "sim" : "nao"} icon={Dumbbell} to="/registro" />
+        </section>
+
         <section className="grid gap-3 md:grid-cols-3">
           <QuickLink to="/refeicoes" icon={Utensils} label="Refeicoes do dia" hint={`${meals.length} registrada${meals.length === 1 ? "" : "s"}`} />
           <QuickLink to="/alimentos" icon={Apple} label="Alimentos" hint="Catalogo pessoal" />
@@ -80,6 +102,18 @@ function Home() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function DailyCard({ label, value, icon: Icon, to }: { label: string; value: string; icon: any; to: string }) {
+  return (
+    <Link to={to} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent"><Icon className="h-5 w-5" /></div>
+      <div>
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-sm font-semibold">{value}</div>
+      </div>
+    </Link>
   );
 }
 
