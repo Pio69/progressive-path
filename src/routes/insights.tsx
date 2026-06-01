@@ -16,7 +16,7 @@ function Insights() {
   const { user } = useAuth();
   const { goals } = useProfile();
 
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logs = [], isLoading, error } = useQuery({
     queryKey: ["daily_logs", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -51,7 +51,14 @@ function Insights() {
         <p className="text-sm text-muted-foreground">Analise dos ultimos registros diarios</p>
       </header>
 
-      {isLoading ? (
+      {error ? (
+        <div className="rounded-2xl border border-warning/30 bg-warning/10 p-6 text-sm">
+          <h2 className="font-semibold text-warning">Tabela daily_logs ainda nao existe no Supabase</h2>
+          <p className="mt-2 text-muted-foreground">
+            Aplique a migration <span className="font-mono">20260601033000_add_daily_logs.sql</span> no Supabase e recarregue a pagina.
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando...</div>
       ) : week.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
