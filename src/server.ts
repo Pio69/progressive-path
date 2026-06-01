@@ -161,32 +161,28 @@ async function handleApiRequest(request: Request, env: unknown) {
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.2,
-          responseFormat: {
-            text: {
-              mimeType: "application/json",
-              schema: {
-                type: "object",
-                properties: {
-                  items: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        calories: { type: "number" },
-                        protein_g: { type: "number" },
-                        carbs_g: { type: "number" },
-                        fat_g: { type: "number" },
-                        confidence: { type: "string", enum: ["baixa", "media", "alta"] },
-                        note: { type: "string" },
-                      },
-                      required: ["id", "calories", "protein_g", "carbs_g", "fat_g", "confidence"],
-                    },
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              items: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    id: { type: "STRING" },
+                    calories: { type: "NUMBER" },
+                    protein_g: { type: "NUMBER" },
+                    carbs_g: { type: "NUMBER" },
+                    fat_g: { type: "NUMBER" },
+                    confidence: { type: "STRING", enum: ["baixa", "media", "alta"] },
+                    note: { type: "STRING" },
                   },
+                  required: ["id", "calories", "protein_g", "carbs_g", "fat_g", "confidence"],
                 },
-                required: ["items"],
               },
             },
+            required: ["items"],
           },
         },
       }),
@@ -195,7 +191,7 @@ async function handleApiRequest(request: Request, env: unknown) {
     if (!geminiResponse.ok) {
       const text = await geminiResponse.text();
       console.error("[Gemini] estimate error", text);
-      return Response.json({ error: "Falha ao calcular macros com Gemini" }, { status: 502 });
+      return Response.json({ error: parseGeminiError(text) }, { status: 502 });
     }
 
     const geminiJson = await geminiResponse.json();
@@ -275,6 +271,20 @@ function clampNumber(value: unknown) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0) return 0;
   return +number.toFixed(1);
+}
+
+function parseGeminiError(body: string) {
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: string; status?: string } };
+    const message = parsed.error?.message;
+    const status = parsed.error?.status;
+    if (message && status) return `Gemini: ${status} - ${message}`;
+    if (message) return `Gemini: ${message}`;
+  } catch {
+    // Fall through to generic body handling.
+  }
+
+  return body ? `Gemini retornou erro: ${body.slice(0, 300)}` : "Falha ao calcular macros com Gemini";
 }
 
 function getRuntimeEnv(env: unknown) {
