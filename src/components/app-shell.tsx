@@ -1,7 +1,8 @@
-import { Link, useLocation } from "@tanstack/react-router";
-import { Activity, Home, Utensils, LineChart, Target, Ruler, Sparkles, ClipboardEdit } from "lucide-react";
+import { Link, useLocation, Navigate } from "@tanstack/react-router";
+import { Activity, Home, Utensils, LineChart, Target, Ruler, Sparkles, ClipboardEdit, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
@@ -15,6 +16,19 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  const { user, loading, signOut } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-sm text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Desktop sidebar */}
