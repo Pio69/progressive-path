@@ -1,89 +1,108 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { USER, DAILY_LOGS, TODAY } from "@/lib/mock-data";
-import { Progress } from "@/components/ui/progress";
-import { Target, TrendingDown, Calendar, Gauge } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profile";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/metas")({
-  head: () => ({ meta: [{ title: "Metas — Cutting Tracker" }] }),
+  head: () => ({ meta: [{ title: "Metas — Projeto Dallas" }] }),
   component: Metas,
 });
 
 function Metas() {
-  const lost = +(USER.startWeight - TODAY.weight).toFixed(1);
-  const remaining = +(TODAY.weight - USER.goalWeight).toFixed(1);
-  const total = USER.startWeight - USER.goalWeight;
-  const progress = Math.round((lost / total) * 100);
-  const weeklyRate = +(DAILY_LOGS[DAILY_LOGS.length - 8].weight - TODAY.weight).toFixed(2);
-  const weeksLeft = weeklyRate > 0 ? Math.ceil(remaining / weeklyRate) : 0;
-  const eta = new Date();
-  eta.setDate(eta.getDate() + weeksLeft * 7);
+  const { user } = useAuth();
+  const { profile, goals } = useProfile();
+  const qc = useQueryClient();
+
+  const [form, setForm] = useState({
+    name: "", height_cm: 0, current_weight_kg: 0, goal_weight_kg: 0, goal: "cutting",
+    calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0,
+  });
+
+  useEffect(() => {
+    if (profile && goals) {
+      setForm({
+        name: profile.name,
+        height_cm: Number(profile.height_cm),
+        current_weight_kg: Number(profile.current_weight_kg),
+        goal_weight_kg: Number(profile.goal_weight_kg),
+        goal: profile.goal,
+        calories: goals.calories,
+        protein_g: goals.protein_g,
+        carbs_g: goals.carbs_g,
+        fat_g: goals.fat_g,
+      });
+    }
+  }, [profile, goals]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error: pe } = await supabase.from("profiles").update({
+        name: form.name, height_cm: form.height_cm,
+        current_weight_kg: form.current_weight_kg, goal_weight_kg: form.goal_weight_kg, goal: form.goal,
+      }).eq("user_id", user!.id);
+      if (pe) throw pe;
+      const { error: ge } = await supabase.from("daily_goals").update({
+        calories: form.calories, protein_g: form.protein_g, carbs_g: form.carbs_g, fat_g: form.fat_g,
+      }).eq("user_id", user!.id);
+      if (ge) throw ge;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: ["daily_goals"] });
+      toast.success("Metas atualizadas");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   return (
     <AppShell>
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Metas</h1>
-        <p className="text-sm text-muted-foreground">Acompanhamento do cutting até {USER.goalWeight} kg</p>
+        <p className="text-sm text-muted-foreground">Atualize seus dados e metas diárias.</p>
       </header>
 
-      <section className="rounded-3xl border border-border bg-gradient-to-br from-primary/15 via-card to-accent/10 p-6 md:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-6">
+        <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold text-muted-foreground">Perfil</h2>
+          <div><Label className="text-xs">Nome</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div><Label className="text-xs">Altura (cm)</Label><Input type="number" step="0.1" value={form.height_cm} onChange={(e) => setForm({ ...form, height_cm: +e.target.value })} /></div>
+            <div><Label className="text-xs">Peso atual (kg)</Label><Input type="number" step="0.1" value={form.current_weight_kg} onChange={(e) => setForm({ ...form, current_weight_kg: +e.target.value })} /></div>
+            <div><Label className="text-xs">Peso meta (kg)</Label><Input type="number" step="0.1" value={form.goal_weight_kg} onChange={(e) => setForm({ ...form, goal_weight_kg: +e.target.value })} /></div>
+          </div>
           <div>
-            <div className="text-sm text-muted-foreground">Progresso total</div>
-            <div className="mt-1 text-5xl font-semibold tracking-tight">{progress}%</div>
-            <div className="mt-1 text-sm text-accent">{lost} kg de {total} kg</div>
+            <Label className="text-xs">Objetivo</Label>
+            <Select value={form.goal} onValueChange={(v) => setForm({ ...form, goal: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cutting">Cutting</SelectItem>
+                <SelectItem value="manutencao">Manutenção</SelectItem>
+                <SelectItem value="bulking">Bulking</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Falta</div>
-            <div className="text-3xl font-semibold text-primary">{remaining.toFixed(1)} kg</div>
-          </div>
-        </div>
-        <Progress value={progress} className="mt-6 h-4" />
-        <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-          <span>{USER.startWeight} kg</span>
-          <span>Hoje · {TODAY.weight} kg</span>
-          <span>{USER.goalWeight} kg</span>
-        </div>
-      </section>
+        </section>
 
-      <section className="mt-6 grid gap-3 md:grid-cols-4">
-        <MetaCard icon={TrendingDown} label="Peso inicial" value={`${USER.startWeight} kg`} />
-        <MetaCard icon={Gauge} label="Peso atual" value={`${TODAY.weight} kg`} tone="primary" />
-        <MetaCard icon={Target} label="Meta" value={`${USER.goalWeight} kg`} tone="accent" />
-        <MetaCard icon={Calendar} label="Ritmo semanal" value={`${weeklyRate > 0 ? "-" : "+"}${Math.abs(weeklyRate)} kg`} tone={weeklyRate > 0 ? "success" : "warning"} />
-      </section>
+        <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold text-muted-foreground">Metas diárias</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><Label className="text-xs">Calorias</Label><Input type="number" value={form.calories} onChange={(e) => setForm({ ...form, calories: +e.target.value })} /></div>
+            <div><Label className="text-xs">Proteína (g)</Label><Input type="number" value={form.protein_g} onChange={(e) => setForm({ ...form, protein_g: +e.target.value })} /></div>
+            <div><Label className="text-xs">Carboidratos (g)</Label><Input type="number" value={form.carbs_g} onChange={(e) => setForm({ ...form, carbs_g: +e.target.value })} /></div>
+            <div><Label className="text-xs">Gorduras (g)</Label><Input type="number" value={form.fat_g} onChange={(e) => setForm({ ...form, fat_g: +e.target.value })} /></div>
+          </div>
+        </section>
 
-      <section className="mt-6 rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-sm font-semibold text-muted-foreground">Projeção</h2>
-        <div className="mt-3 grid gap-6 md:grid-cols-3">
-          <div>
-            <div className="text-xs text-muted-foreground">Semanas restantes</div>
-            <div className="mt-1 text-3xl font-semibold">{weeksLeft}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Data estimada</div>
-            <div className="mt-1 text-3xl font-semibold text-primary">{eta.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Ritmo ideal</div>
-            <div className="mt-1 text-3xl font-semibold text-accent">0,7 kg/sem</div>
-            <div className="text-xs text-muted-foreground">para 120 dias</div>
-          </div>
-        </div>
-      </section>
+        <Button type="submit" size="lg" disabled={save.isPending}>{save.isPending ? "Salvando..." : "Salvar alterações"}</Button>
+      </form>
     </AppShell>
-  );
-}
-
-function MetaCard({ icon: Icon, label, value, tone = "default" }: any) {
-  const toneClass = { default: "text-foreground", primary: "text-primary", accent: "text-accent", success: "text-success", warning: "text-warning" }[tone as string];
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-        <Icon className={`h-4 w-4 ${toneClass}`} />
-      </div>
-      <div className={`mt-2 text-2xl font-semibold ${toneClass}`}>{value}</div>
-    </div>
   );
 }

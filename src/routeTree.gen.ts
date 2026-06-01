@@ -11,11 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as RefeicoesRouteImport } from './routes/refeicoes'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MetasRouteImport } from './routes/metas'
 import { Route as MedidasRouteImport } from './routes/medidas'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as EvolucaoRouteImport } from './routes/evolucao'
+import { Route as AlimentosRouteImport } from './routes/alimentos'
 import { Route as IndexRouteImport } from './routes/index'
 
 const RegistroRoute = RegistroRouteImport.update({
@@ -26,6 +28,11 @@ const RegistroRoute = RegistroRouteImport.update({
 const RefeicoesRoute = RefeicoesRouteImport.update({
   id: '/refeicoes',
   path: '/refeicoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MetasRoute = MetasRouteImport.update({
@@ -53,6 +60,11 @@ const EvolucaoRoute = EvolucaoRouteImport.update({
   path: '/evolucao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AlimentosRoute = AlimentosRouteImport.update({
+  id: '/alimentos',
+  path: '/alimentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -61,32 +73,38 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/alimentos': typeof AlimentosRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
   '/login': typeof LoginRoute
   '/medidas': typeof MedidasRoute
   '/metas': typeof MetasRoute
+  '/onboarding': typeof OnboardingRoute
   '/refeicoes': typeof RefeicoesRoute
   '/registro': typeof RegistroRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/alimentos': typeof AlimentosRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
   '/login': typeof LoginRoute
   '/medidas': typeof MedidasRoute
   '/metas': typeof MetasRoute
+  '/onboarding': typeof OnboardingRoute
   '/refeicoes': typeof RefeicoesRoute
   '/registro': typeof RegistroRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/alimentos': typeof AlimentosRoute
   '/evolucao': typeof EvolucaoRoute
   '/insights': typeof InsightsRoute
   '/login': typeof LoginRoute
   '/medidas': typeof MedidasRoute
   '/metas': typeof MetasRoute
+  '/onboarding': typeof OnboardingRoute
   '/refeicoes': typeof RefeicoesRoute
   '/registro': typeof RegistroRoute
 }
@@ -94,42 +112,50 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/alimentos'
     | '/evolucao'
     | '/insights'
     | '/login'
     | '/medidas'
     | '/metas'
+    | '/onboarding'
     | '/refeicoes'
     | '/registro'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/alimentos'
     | '/evolucao'
     | '/insights'
     | '/login'
     | '/medidas'
     | '/metas'
+    | '/onboarding'
     | '/refeicoes'
     | '/registro'
   id:
     | '__root__'
     | '/'
+    | '/alimentos'
     | '/evolucao'
     | '/insights'
     | '/login'
     | '/medidas'
     | '/metas'
+    | '/onboarding'
     | '/refeicoes'
     | '/registro'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlimentosRoute: typeof AlimentosRoute
   EvolucaoRoute: typeof EvolucaoRoute
   InsightsRoute: typeof InsightsRoute
   LoginRoute: typeof LoginRoute
   MedidasRoute: typeof MedidasRoute
   MetasRoute: typeof MetasRoute
+  OnboardingRoute: typeof OnboardingRoute
   RefeicoesRoute: typeof RefeicoesRoute
   RegistroRoute: typeof RegistroRoute
 }
@@ -148,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/refeicoes'
       fullPath: '/refeicoes'
       preLoaderRoute: typeof RefeicoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/metas': {
@@ -185,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EvolucaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/alimentos': {
+      id: '/alimentos'
+      path: '/alimentos'
+      fullPath: '/alimentos'
+      preLoaderRoute: typeof AlimentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -197,11 +237,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlimentosRoute: AlimentosRoute,
   EvolucaoRoute: EvolucaoRoute,
   InsightsRoute: InsightsRoute,
   LoginRoute: LoginRoute,
   MedidasRoute: MedidasRoute,
   MetasRoute: MetasRoute,
+  OnboardingRoute: OnboardingRoute,
   RefeicoesRoute: RefeicoesRoute,
   RegistroRoute: RegistroRoute,
 }

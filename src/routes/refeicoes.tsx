@@ -1,116 +1,228 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { MEALS_TODAY, USER, TODAY } from "@/lib/mock-data";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Clock, Flame, Beef, Pencil } from "lucide-react";
+import { Plus, Trash2, Clock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
+import { Link } from "@tanstack/react-router";
+import { calcMacros, sumMacros, todayIso, type Food, type Meal, type MealItem } from "@/lib/dallas";
 
 export const Route = createFileRoute("/refeicoes")({
-  head: () => ({ meta: [{ title: "Refeições do dia — Cutting Tracker" }] }),
+  head: () => ({ meta: [{ title: "Refeições — Projeto Dallas" }] }),
   component: Refeicoes,
 });
 
 function Refeicoes() {
-  const [meals, setMeals] = useState(MEALS_TODAY);
-  const [open, setOpen] = useState(false);
-  const totalCal = meals.reduce((a, b) => a + b.calories, 0);
-  const totalProt = meals.reduce((a, b) => a + b.protein, 0);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [date, setDate] = useState(todayIso());
+  const [newMealOpen, setNewMealOpen] = useState(false);
+  const [addItemMealId, setAddItemMealId] = useState<string | null>(null);
+
+  const { data: meals = [] } = useQuery({
+    queryKey: ["meals", user?.id, date],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("meals")
+        .select("*, meal_items(*, foods(*))")
+        .eq("date", date)
+        .order("time", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return data as (Meal & { meal_items: (MealItem & { foods: Food })[] })[];
+    },
+  });
+
+  const { data: foods = [] } = useQuery({
+    queryKey: ["foods", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("foods").select("*").order("name");
+      if (error) throw error;
+      return data as Food[];
+    },
+  });
+
+  const createMeal = useMutation({
+    mutationFn: async (m: { name: string; time: string }) => {
+      const { error } = await supabase.from("meals").insert({ user_id: user!.id, date, name: m.name, time: m.time || null });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); setNewMealOpen(false); toast.success("Refeição criada"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteMeal = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("meals").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); toast.success("Refeição excluída"); },
+  });
+
+  const addItem = useMutation({
+    mutationFn: async (i: { meal_id: string; food_id: string; grams: number }) => {
+      const { error } = await supabase.from("meal_items").insert(i);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["meals"] }); setAddItemMealId(null); toast.success("Item adicionado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteItem = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("meal_items").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["meals"] }),
+  });
+
+  const totals = sumMacros(
+    meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it.foods, Number(it.grams))))
+  );
 
   return (
     <AppShell>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Refeições</h1>
-          <p className="text-sm text-muted-foreground">{new Date(TODAY.date).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</p>
+          <p className="text-sm text-muted-foreground">Registre os alimentos consumidos no dia.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="rounded-xl"><Plus className="mr-2 h-4 w-4" />Nova refeição</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nova refeição</DialogTitle></DialogHeader>
-            <form
-              onSubmit={(e) => {
+        <div className="flex items-center gap-2">
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-auto" />
+          <Dialog open={newMealOpen} onOpenChange={setNewMealOpen}>
+            <DialogTrigger asChild><Button className="rounded-xl"><Plus className="mr-2 h-4 w-4" />Nova refeição</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova refeição</DialogTitle></DialogHeader>
+              <form onSubmit={(e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
-                setMeals([...meals, {
-                  id: Date.now(),
-                  name: String(f.get("name")),
-                  time: String(f.get("time")),
-                  foods: String(f.get("foods")),
-                  calories: Number(f.get("calories")),
-                  protein: Number(f.get("protein")),
-                  notes: String(f.get("notes") || ""),
-                }]);
-                setOpen(false);
-                toast.success("Refeição adicionada");
-              }}
-              className="space-y-3"
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Nome</Label><Input name="name" required defaultValue="Lanche" /></div>
-                <div><Label className="text-xs">Horário</Label><Input name="time" type="time" required defaultValue="15:00" /></div>
-              </div>
-              <div><Label className="text-xs">Alimentos</Label><Input name="foods" required placeholder="Ex: 2 ovos, pão, queijo" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Calorias</Label><Input name="calories" type="number" required defaultValue={300} /></div>
-                <div><Label className="text-xs">Proteína (g)</Label><Input name="protein" type="number" required defaultValue={20} /></div>
-              </div>
-              <div><Label className="text-xs">Observações</Label><Textarea name="notes" rows={2} /></div>
-              <Button type="submit" className="w-full">Adicionar</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+                createMeal.mutate({ name: String(f.get("name")), time: String(f.get("time") || "") });
+              }} className="space-y-3">
+                <div><Label className="text-xs">Nome</Label><Input name="name" required defaultValue="Café da manhã" /></div>
+                <div><Label className="text-xs">Horário</Label><Input name="time" type="time" defaultValue="08:00" /></div>
+                <Button type="submit" className="w-full" disabled={createMeal.isPending}>Criar</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </header>
 
-      <section className="mb-6 grid gap-3 md:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><Flame className="h-3.5 w-3.5" />Calorias</span>
-            <span>{totalCal} / {USER.calorieGoal} kcal</span>
-          </div>
-          <Progress value={Math.min(100, (totalCal / USER.calorieGoal) * 100)} className="mt-3 h-2.5" />
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><Beef className="h-3.5 w-3.5" />Proteína</span>
-            <span>{totalProt} / {USER.proteinGoal} g</span>
-          </div>
-          <Progress value={Math.min(100, (totalProt / USER.proteinGoal) * 100)} className="mt-3 h-2.5" />
-        </div>
+      <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Total label="Calorias" value={totals.kcal} unit="kcal" />
+        <Total label="Proteína" value={totals.protein} unit="g" />
+        <Total label="Carbo" value={totals.carbs} unit="g" />
+        <Total label="Gordura" value={totals.fat} unit="g" />
       </section>
 
+      {foods.length === 0 && (
+        <div className="mb-4 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+          Você ainda não tem alimentos cadastrados. <Link to="/alimentos" className="text-primary underline">Cadastre seus alimentos</Link> para adicioná-los às refeições.
+        </div>
+      )}
+
       <section className="space-y-3">
-        {meals.map((m) => (
-          <article key={m.id} className="group flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-border bg-card p-5 hover:border-primary/40">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3">
-                <h3 className="text-base font-semibold">{m.name}</h3>
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"><Clock className="h-3 w-3" />{m.time}</span>
+        {meals.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+            Nenhuma refeição registrada nesta data.
+          </div>
+        ) : meals.map((m) => {
+          const mealMacros = sumMacros(m.meal_items.map((it) => calcMacros(it.foods, Number(it.grams))));
+          return (
+            <article key={m.id} className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-semibold">{m.name}</h3>
+                  {m.time && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{m.time}</span>}
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-warning font-semibold">{mealMacros.kcal} kcal</span>
+                  <span className="text-accent font-semibold">P {mealMacros.protein}g</span>
+                  <span className="text-muted-foreground">C {mealMacros.carbs}g · G {mealMacros.fat}g</span>
+                  <Button size="icon" variant="ghost" onClick={() => deleteMeal.mutate(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{m.foods}</p>
-              {m.notes && <p className="mt-1 text-xs text-muted-foreground/70 italic">"{m.notes}"</p>}
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground">kcal</div>
-                <div className="text-lg font-semibold text-warning">{m.calories}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground">prot</div>
-                <div className="text-lg font-semibold text-accent">{m.protein}g</div>
-              </div>
-              <Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100"><Pencil className="h-4 w-4" /></Button>
-            </div>
-          </article>
-        ))}
+
+              <ul className="mt-3 space-y-1.5">
+                {m.meal_items.map((it) => {
+                  const macros = calcMacros(it.foods, Number(it.grams));
+                  return (
+                    <li key={it.id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{it.foods.name}</div>
+                        <div className="text-xs text-muted-foreground">{Number(it.grams)}g</div>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span>{macros.kcal} kcal</span>
+                        <span className="text-accent">P{macros.protein}</span>
+                        <Button size="icon" variant="ghost" onClick={() => deleteItem.mutate(it.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <Dialog open={addItemMealId === m.id} onOpenChange={(o) => setAddItemMealId(o ? m.id : null)}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="mt-3 rounded-lg" disabled={foods.length === 0}>
+                    <Plus className="mr-1 h-3.5 w-3.5" />Adicionar alimento
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Adicionar alimento</DialogTitle></DialogHeader>
+                  <AddItemForm foods={foods} onSubmit={(food_id, grams) => addItem.mutate({ meal_id: m.id, food_id, grams })} pending={addItem.isPending} />
+                </DialogContent>
+              </Dialog>
+            </article>
+          );
+        })}
       </section>
     </AppShell>
+  );
+}
+
+function AddItemForm({ foods, onSubmit, pending }: { foods: Food[]; onSubmit: (food_id: string, grams: number) => void; pending: boolean }) {
+  const [foodId, setFoodId] = useState(foods[0]?.id ?? "");
+  const [grams, setGrams] = useState(100);
+  const food = foods.find((f) => f.id === foodId);
+  const macros = food ? calcMacros(food, grams) : null;
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); if (foodId) onSubmit(foodId, grams); }} className="space-y-3">
+      <div>
+        <Label className="text-xs">Alimento</Label>
+        <Select value={foodId} onValueChange={setFoodId}>
+          <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+          <SelectContent>
+            {foods.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="text-xs">Quantidade (g)</Label>
+        <Input type="number" min="1" value={grams} onChange={(e) => setGrams(+e.target.value)} />
+      </div>
+      {macros && (
+        <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div><div className="font-semibold text-foreground">{macros.kcal}</div>kcal</div>
+            <div><div className="font-semibold text-foreground">{macros.protein}g</div>P</div>
+            <div><div className="font-semibold text-foreground">{macros.carbs}g</div>C</div>
+            <div><div className="font-semibold text-foreground">{macros.fat}g</div>G</div>
+          </div>
+        </div>
+      )}
+      <Button type="submit" className="w-full" disabled={pending || !foodId}>Adicionar</Button>
+    </form>
+  );
+}
+
+function Total({ label, value, unit }: { label: string; value: number; unit: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-xl font-semibold">{value} <span className="text-sm font-normal text-muted-foreground">{unit}</span></div>
+    </div>
   );
 }
