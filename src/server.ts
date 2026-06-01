@@ -104,6 +104,24 @@ type EstimateResponse = {
 
 async function handleApiRequest(request: Request, env: unknown) {
   const url = new URL(request.url);
+  if (url.pathname === "/api/env-check") {
+    const runtimeEnv = getRuntimeEnv(env);
+    return Response.json({
+      hasGeminiApiKey: Boolean(runtimeEnv.GEMINI_API_KEY),
+      hasSupabaseUrl: Boolean(runtimeEnv.SUPABASE_URL || runtimeEnv.VITE_SUPABASE_URL),
+      hasSupabaseKey: Boolean(
+        runtimeEnv.SUPABASE_PUBLISHABLE_KEY ||
+          runtimeEnv.SUPABASE_ANON_KEY ||
+          runtimeEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
+          runtimeEnv.VITE_SUPABASE_ANON_KEY ||
+          runtimeEnv.VITE_SUPABASE_KEY,
+      ),
+      knownNames: Object.keys(runtimeEnv)
+        .filter((key) => /GEMINI|SUPABASE/i.test(key))
+        .sort(),
+    });
+  }
+
   if (url.pathname !== "/api/estimate-meal-macros") return null;
   if (request.method !== "POST") {
     return Response.json({ error: "Metodo nao permitido" }, { status: 405 });
