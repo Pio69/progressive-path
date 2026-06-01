@@ -1,15 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { todayIso } from "@/lib/dallas";
 
 export const Route = createFileRoute("/evolucao")({
   head: () => ({ meta: [{ title: "Evolucao - Projeto Dallas" }] }),
@@ -20,14 +14,7 @@ type WH = { id: string; measured_at: string; weight_kg: number };
 
 function Evolucao() {
   const { user } = useAuth();
-  const { profile } = useProfile();
   const qc = useQueryClient();
-  const [date, setDate] = useState(todayIso());
-  const [weight, setWeight] = useState<number>(0);
-
-  useEffect(() => {
-    if (profile?.weight_kg != null) setWeight(Number(profile.weight_kg));
-  }, [profile?.weight_kg]);
 
   const { data: history = [] } = useQuery({
     queryKey: ["weight_history", user?.id],
@@ -37,23 +24,6 @@ function Evolucao() {
       if (error) throw error;
       return data as WH[];
     },
-  });
-
-  const save = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("weight_history")
-        .insert({ user_id: user!.id, measured_at: date, weight_kg: weight });
-      if (error) throw error;
-      const { error: profileError } = await supabase.from("profiles").update({ weight_kg: weight }).eq("id", user!.id);
-      if (profileError) throw profileError;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["weight_history"] });
-      qc.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Pesagem registrada");
-    },
-    onError: (e: any) => toast.error(e.message),
   });
 
   const del = useMutation({
@@ -97,16 +67,19 @@ function Evolucao() {
     <AppShell>
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Evolucao</h1>
-        <p className="text-sm text-muted-foreground">Historico de pesagens.</p>
+        <p className="text-sm text-muted-foreground">Historico das pesagens salvas no Registro diario.</p>
       </header>
 
       <section className="mb-6 rounded-2xl border border-border bg-card p-5">
-        <h2 className="mb-3 text-sm font-semibold">Registrar pesagem</h2>
-        <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="flex flex-wrap items-end gap-3">
-          <div><Label className="text-xs">Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-          <div><Label className="text-xs">Peso (kg)</Label><Input type="number" step="0.1" value={weight} onChange={(e) => setWeight(+e.target.value)} required /></div>
-          <Button type="submit" disabled={save.isPending}>Salvar</Button>
-        </form>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Peso vem do Registro diario</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Para adicionar ou corrigir uma pesagem, abra o dia no Registro.</p>
+          </div>
+          <Button asChild>
+            <Link to="/registro">Abrir Registro</Link>
+          </Button>
+        </div>
       </section>
 
       {points.length > 0 && (

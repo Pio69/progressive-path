@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Flame, Beef, Plus, LineChart, ClipboardList, Moon, Droplets, Dumbbell } from "lucide-react";
+import { Flame, Beef, Plus, Utensils, LineChart, ClipboardList, Moon, Droplets, Dumbbell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -72,7 +72,7 @@ function Home() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Objetivo: {profile?.goal ?? "cutting"}</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="rounded-xl"><Link to="/registro"><Plus className="mr-2 h-4 w-4" />Registrar hoje</Link></Button>
+            <Button asChild size="lg" className="rounded-xl"><Link to="/refeicoes"><Plus className="mr-2 h-4 w-4" />Adicionar refeicao</Link></Button>
           </div>
         </section>
 
@@ -88,14 +88,14 @@ function Home() {
         )}
 
         <section className="grid gap-3 md:grid-cols-4">
-          <DailyCard label="Hoje" value={todayLog ? "feito" : "pendente"} icon={ClipboardList} to="/registro" />
+          <DailyCard label="Registro" value={todayLog ? "feito" : "pendente"} icon={ClipboardList} to="/registro" />
           <DailyCard label="Agua" value={todayLog?.water_l ? `${Number(todayLog.water_l).toFixed(1)} L` : "-"} icon={Droplets} to="/registro" />
           <DailyCard label="Sono" value={todayLog?.sleep_hours ? `${Number(todayLog.sleep_hours).toFixed(1)} h` : "-"} icon={Moon} to="/registro" />
           <DailyCard label="Treino" value={todayLog?.trained ? "sim" : "nao"} icon={Dumbbell} to="/registro" />
         </section>
 
         <section className="grid gap-3 md:grid-cols-2">
-          <QuickLink to="/registro" icon={ClipboardList} label="Registro de hoje" hint={`${meals.length} refeicao${meals.length === 1 ? "" : "es"}`} />
+          <QuickLink to="/refeicoes" icon={Utensils} label="Refeicoes do dia" hint={`${meals.length} registrada${meals.length === 1 ? "" : "s"}`} />
           <QuickLink to="/evolucao" icon={LineChart} label="Evolucao" hint="Historico de peso" />
         </section>
       </div>

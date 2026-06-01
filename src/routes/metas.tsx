@@ -22,7 +22,7 @@ function Metas() {
   const qc = useQueryClient();
 
   const [form, setForm] = useState({
-    name: "", height_cm: 0, weight_kg: 0, goal: "cutting",
+    name: "", height_cm: 0, goal: "cutting",
     calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0,
   });
 
@@ -31,7 +31,6 @@ function Metas() {
       setForm({
         name: profile.name ?? "",
         height_cm: Number(profile.height_cm ?? 0),
-        weight_kg: Number(profile.weight_kg ?? 0),
         goal: profile.goal ?? "cutting",
         calories: goals.calories,
         protein_g: goals.protein_g,
@@ -46,7 +45,6 @@ function Metas() {
       const { error: pe } = await supabase.from("profiles").update({
         name: form.name,
         height_cm: form.height_cm,
-        weight_kg: form.weight_kg,
         goal: form.goal,
       }).eq("id", user!.id);
       if (pe) throw pe;
@@ -70,17 +68,14 @@ function Metas() {
     <AppShell>
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Metas</h1>
-        <p className="text-sm text-muted-foreground">Atualize seus dados e metas diarias.</p>
+        <p className="text-sm text-muted-foreground">Atualize seus dados fixos e metas diarias.</p>
       </header>
 
       <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-6">
         <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
           <h2 className="text-sm font-semibold text-muted-foreground">Perfil</h2>
           <div><Label className="text-xs">Nome</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><Label className="text-xs">Altura (cm)</Label><Input type="number" step="0.1" value={form.height_cm} onChange={(e) => setForm({ ...form, height_cm: +e.target.value })} /></div>
-            <div><Label className="text-xs">Peso atual (kg)</Label><Input type="number" step="0.1" value={form.weight_kg} onChange={(e) => setForm({ ...form, weight_kg: +e.target.value })} /></div>
-          </div>
+          <div><Label className="text-xs">Altura (cm)</Label><Input type="number" step="0.1" value={form.height_cm} onChange={(e) => setForm({ ...form, height_cm: +e.target.value })} /></div>
           <div>
             <Label className="text-xs">Objetivo</Label>
             <Select value={form.goal} onValueChange={(v) => setForm({ ...form, goal: v })}>
