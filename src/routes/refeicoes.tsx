@@ -119,6 +119,8 @@ function Refeicoes() {
         headers: {
           "content-type": "application/json",
           authorization: `Bearer ${token}`,
+          "x-supabase-url": import.meta.env.VITE_SUPABASE_URL,
+          "x-supabase-key": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
           mealName: meal.meal_type,

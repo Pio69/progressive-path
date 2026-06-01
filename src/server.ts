@@ -199,13 +199,18 @@ async function requireAuthenticatedUser(request: Request, runtimeEnv: Record<str
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) throw new Error("Nao autenticado");
 
-  const supabaseUrl = runtimeEnv.SUPABASE_URL || runtimeEnv.VITE_SUPABASE_URL;
+  const supabaseUrl =
+    runtimeEnv.SUPABASE_URL ||
+    runtimeEnv.VITE_SUPABASE_URL ||
+    request.headers.get("x-supabase-url") ||
+    getSupabaseUrlFromToken(token);
   const supabaseKey =
     runtimeEnv.SUPABASE_PUBLISHABLE_KEY ||
     runtimeEnv.SUPABASE_ANON_KEY ||
     runtimeEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
     runtimeEnv.VITE_SUPABASE_ANON_KEY ||
-    runtimeEnv.VITE_SUPABASE_KEY;
+    runtimeEnv.VITE_SUPABASE_KEY ||
+    request.headers.get("x-supabase-key");
   if (!supabaseUrl || !supabaseKey) {
     const missing = [
       ...(!supabaseUrl ? ["SUPABASE_URL ou VITE_SUPABASE_URL"] : []),
@@ -222,6 +227,15 @@ async function requireAuthenticatedUser(request: Request, runtimeEnv: Record<str
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) throw new Error("Nao autenticado");
   return data.user;
+}
+
+function getSupabaseUrlFromToken(token: string) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { iss?: string };
+    return payload.iss?.replace(/\/auth\/v1\/?$/, "") ?? "";
+  } catch {
+    return "";
+  }
 }
 
 function normalizeEstimates(estimates: EstimateResponse["items"], originalItems: EstimateRequest["items"]) {
