@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { calcMacros, sumMacros, todayIso, type Meal, type MealItem } from "@/lib/dallas";
@@ -108,6 +108,86 @@ function Refeicoes() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["meals"] }),
   });
 
+  const estimateMeal = useMutation({
+    mutationFn: async (meal: Meal & { meal_items: MealItem[] }) => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Sessao expirada. Entre novamente.");
+
+      const response = await fetch("/api/estimate-meal-macros", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mealName: meal.meal_type,
+          items: meal.meal_items.map((item) => ({
+            id: item.id,
+            name: item.food_name,
+            grams: Number(item.quantity_g),
+          })),
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Falha ao calcular macros");
+
+      const estimates = (payload.items ?? []) as MacroEstimate[];
+      const estimatesById = new Map(estimates.map((item) => [item.id, item]));
+
+      await Promise.all(
+        estimates.map((item) => {
+          const original = meal.meal_items.find((mealItem) => mealItem.id === item.id);
+          const grams = Number(original?.quantity_g ?? 0);
+          if (!original || grams <= 0) return Promise.resolve();
+
+          const factor = 100 / grams;
+          return supabase
+            .from("meal_items")
+            .update({
+              calories_per_100g: +(item.calories * factor).toFixed(1),
+              protein_per_100g: +(item.protein_g * factor).toFixed(1),
+              carbs_per_100g: +(item.carbs_g * factor).toFixed(1),
+              fat_per_100g: +(item.fat_g * factor).toFixed(1),
+            })
+            .eq("id", item.id)
+            .then(({ error }) => {
+              if (error) throw error;
+            });
+        }),
+      );
+
+      const mealsWithEstimatedMacros = meals.map((existingMeal) => ({
+        ...existingMeal,
+        meal_items: existingMeal.id === meal.id
+          ? existingMeal.meal_items.map((mealItem) => applyEstimateToMealItem(mealItem, estimatesById.get(mealItem.id)))
+          : existingMeal.meal_items,
+      }));
+      const dayTotals = sumMacros(
+        mealsWithEstimatedMacros.flatMap((existingMeal) => existingMeal.meal_items.map((item) => calcMacros(item, Number(item.quantity_g)))),
+      );
+
+      const { error: logError } = await supabase.from("daily_logs").upsert({
+        user_id: user!.id,
+        log_date: date,
+        calories: dayTotals.kcal,
+        protein_g: dayTotals.protein,
+      }, { onConflict: "user_id,log_date" });
+      if (logError) throw logError;
+
+      return estimates;
+    },
+    onSuccess: (items) => {
+      qc.invalidateQueries({ queryKey: ["meals"] });
+      qc.invalidateQueries({ queryKey: ["daily_log"] });
+      qc.invalidateQueries({ queryKey: ["daily_logs"] });
+      const lowConfidence = items.filter((item) => item.confidence === "baixa").length;
+      toast.success(lowConfidence > 0 ? `Macros calculados. ${lowConfidence} item(ns) com baixa confianca.` : "Macros calculados");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const totals = sumMacros(
     meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g))))
   );
@@ -170,6 +250,16 @@ function Refeicoes() {
                   <span className="text-warning font-semibold">{mealMacros.kcal} kcal</span>
                   <span className="text-accent font-semibold">P {mealMacros.protein}g</span>
                   <span className="text-muted-foreground">C {mealMacros.carbs}g / G {mealMacros.fat}g</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-lg"
+                    disabled={estimateMeal.isPending || m.meal_items.length === 0}
+                    onClick={() => estimateMeal.mutate(m)}
+                  >
+                    <Sparkles className="mr-1 h-3.5 w-3.5" />
+                    {estimateMeal.isPending && estimateMeal.variables?.id === m.id ? "Calculando..." : "Calcular"}
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => deleteMeal.mutate(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>
               </div>
@@ -210,6 +300,30 @@ function Refeicoes() {
       </section>
     </AppShell>
   );
+}
+
+type MacroEstimate = {
+  id: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  confidence: "baixa" | "media" | "alta";
+  note?: string;
+};
+
+function applyEstimateToMealItem(item: MealItem, estimate: MacroEstimate | undefined): MealItem {
+  const grams = Number(item.quantity_g);
+  if (!estimate || grams <= 0) return item;
+
+  const factor = 100 / grams;
+  return {
+    ...item,
+    calories_per_100g: +(estimate.calories * factor).toFixed(1),
+    protein_per_100g: +(estimate.protein_g * factor).toFixed(1),
+    carbs_per_100g: +(estimate.carbs_g * factor).toFixed(1),
+    fat_per_100g: +(estimate.fat_g * factor).toFixed(1),
+  };
 }
 
 function AddItemsForm({ onSubmit, pending }: { onSubmit: (itemsText: string) => void; pending: boolean }) {
