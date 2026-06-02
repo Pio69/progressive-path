@@ -134,7 +134,7 @@ function Home() {
               goal={goals.carbs_g}
               unit="g"
               icon={Utensils}
-              tone="gold"
+              tone="sky"
             />
             <MacroCard
               label="Gorduras"
@@ -192,7 +192,7 @@ function Home() {
             icon={Utensils}
             label="Refeicoes do dia"
             hint={`${meals.length} registrada${meals.length === 1 ? "" : "s"}`}
-            tone="gold"
+            tone="sky"
           />
           <QuickLink
             to="/evolucao"
@@ -314,7 +314,7 @@ function QuickLink({
   );
 }
 
-type Tone = "primary" | "fresh" | "gold" | "amber" | "violet";
+type Tone = "primary" | "fresh" | "sky" | "amber" | "violet";
 
 const TONES: Record<
   Tone,
@@ -334,12 +334,12 @@ const TONES: Record<
     soft: "bg-accent/15 text-accent",
     text: "text-accent",
   },
-  gold: {
-    bar: "bg-warning",
-    hover: "hover:border-warning/50",
-    progress: "bg-warning/20 [&>div]:bg-warning",
-    soft: "bg-warning/15 text-warning",
-    text: "text-warning",
+  sky: {
+    bar: "bg-cyan-400",
+    hover: "hover:border-cyan-400/50",
+    progress: "bg-cyan-400/20 [&>div]:bg-cyan-400",
+    soft: "bg-cyan-400/15 text-cyan-300",
+    text: "text-cyan-300",
   },
   amber: {
     bar: "bg-orange-400",
