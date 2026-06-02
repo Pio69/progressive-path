@@ -222,7 +222,7 @@ function Alimentos() {
                     <Input
                       value={lookupTerm}
                       onChange={(event) => setLookupTerm(event.target.value)}
-                      placeholder="Iogurte Tirol Zero"
+                      placeholder="Nome do alimento ou produto"
                     />
                     <Button
                       type="submit"

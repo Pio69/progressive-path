@@ -30,7 +30,7 @@ function Metas() {
   const [form, setForm] = useState({
     name: "",
     height_cm: 0,
-    goal: "cutting",
+    goal: "manutencao",
     calories: 0,
     protein_g: 0,
     carbs_g: 0,
@@ -42,7 +42,7 @@ function Metas() {
       setForm({
         name: profile.name ?? "",
         height_cm: Number(profile.height_cm ?? 0),
-        goal: profile.goal ?? "cutting",
+        goal: normalizeGoal(profile.goal),
         calories: goals?.calories ?? 0,
         protein_g: goals?.protein_g ?? 0,
         carbs_g: goals?.carbs_g ?? 0,
@@ -116,9 +116,9 @@ function Metas() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cutting">Cutting</SelectItem>
+                <SelectItem value="perda_gordura">Perda de gordura</SelectItem>
                 <SelectItem value="manutencao">Manutencao</SelectItem>
-                <SelectItem value="bulking">Bulking</SelectItem>
+                <SelectItem value="ganho_massa">Ganho de massa</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -172,4 +172,10 @@ function Metas() {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Erro inesperado";
+}
+
+function normalizeGoal(goal: string | null | undefined) {
+  if (goal === "cutting") return "perda_gordura";
+  if (goal === "bulking") return "ganho_massa";
+  return goal ?? "manutencao";
 }

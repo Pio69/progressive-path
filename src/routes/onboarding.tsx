@@ -30,13 +30,13 @@ function Onboarding() {
 
   const [form, setForm] = useState({
     name: "",
-    height_cm: 183,
-    weight_kg: 109,
-    goal: "cutting",
-    calories: 2200,
-    protein_g: 180,
-    carbs_g: 200,
-    fat_g: 70,
+    height_cm: 0,
+    weight_kg: 0,
+    goal: "manutencao",
+    calories: 0,
+    protein_g: 0,
+    carbs_g: 0,
+    fat_g: 0,
   });
   const [saving, setSaving] = useState(false);
 
@@ -144,9 +144,9 @@ function Onboarding() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cutting">Cutting (perder gordura)</SelectItem>
+                  <SelectItem value="perda_gordura">Perda de gordura</SelectItem>
                   <SelectItem value="manutencao">Manutenção</SelectItem>
-                  <SelectItem value="bulking">Bulking (ganhar massa)</SelectItem>
+                  <SelectItem value="ganho_massa">Ganho de massa</SelectItem>
                 </SelectContent>
               </Select>
             </div>

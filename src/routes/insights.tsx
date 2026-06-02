@@ -220,13 +220,13 @@ function buildInsights(logs: DailyLog[], goals: { calories: number; protein_g: n
     trained >= 4
       ? {
           type: "success",
-          title: "Treino na rota",
-          text: `${trained} treinos registrados na semana. Isso conversa bem com a meta da planilha.`,
+          title: "Consistencia de treino",
+          text: `${trained} treinos registrados na semana. Boa consistencia no periodo analisado.`,
         }
       : {
           type: "info",
-          title: "Espaco para mais treino",
-          text: `${trained} treinos registrados. Se a semana ainda nao fechou, da para buscar os 4 treinos.`,
+          title: "Consistencia de treino",
+          text: `${trained} treinos registrados. Use sua meta semanal como referencia para ajustar a rotina.`,
         },
   );
 

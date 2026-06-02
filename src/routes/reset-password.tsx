@@ -52,7 +52,7 @@ function ResetPasswordPage() {
             <Activity className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-lg font-semibold">Cutting Tracker</div>
+            <div className="text-lg font-semibold">Progressive Path</div>
             <div className="text-xs text-muted-foreground">Redefinir senha</div>
           </div>
         </div>

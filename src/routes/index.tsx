@@ -33,7 +33,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Progressive Path - Dashboard" },
-      { name: "description", content: "Acompanhe calorias, macros e evolucao do seu cutting." },
+      { name: "description", content: "Acompanhe calorias, macros e evolucao dos seus habitos." },
     ],
   }),
   component: Home,
@@ -94,7 +94,7 @@ function Home() {
             {weight ? `Peso atual: ${weight.toFixed(1)} kg` : "Acompanhe suas metas do dia."}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Objetivo: {profile?.goal ?? "cutting"}
+            Objetivo: {formatGoal(profile?.goal)}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild size="lg" className="rounded-xl">
@@ -268,4 +268,16 @@ function QuickLink({
       </div>
     </Link>
   );
+}
+
+function formatGoal(goal: string | null | undefined) {
+  const labels: Record<string, string> = {
+    perda_gordura: "Perda de gordura",
+    cutting: "Perda de gordura",
+    manutencao: "Manutencao",
+    ganho_massa: "Ganho de massa",
+    bulking: "Ganho de massa",
+  };
+
+  return goal ? (labels[goal] ?? goal) : "Nao definido";
 }

@@ -303,7 +303,7 @@ function Registro() {
           <Field label="Observacoes">
             <Textarea
               rows={4}
-              placeholder="Como foi a fome, energia, treino, rotina..."
+              placeholder="Observacoes sobre rotina, energia, treino ou contexto do dia..."
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
@@ -358,7 +358,7 @@ function Registro() {
             ))}
           </div>
           <div className="rounded-xl border border-border bg-background/40 p-3 text-xs text-muted-foreground">
-            Esses sinais ajudam a futura IA a explicar peso, fome, performance e consistencia.
+            Esses sinais ajudam a contextualizar os resultados e identificar padroes.
           </div>
           <Button
             type="submit"

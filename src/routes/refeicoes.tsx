@@ -364,14 +364,14 @@ function Refeicoes() {
               >
                 <div>
                   <Label className="text-xs">Nome da refeicao</Label>
-                  <Input name="meal_type" required defaultValue={`Ref ${meals.length + 1}`} />
+                  <Input name="meal_type" required defaultValue={`Refeicao ${meals.length + 1}`} />
                 </div>
                 <div>
                   <Label className="text-xs">Itens por texto livre</Label>
                   <Textarea
                     name="items"
                     className="min-h-36"
-                    placeholder={"200g iogurte morango tirol zero\n40g whey dux chocolate branco"}
+                    placeholder={"150g alimento principal\n80g acompanhamento"}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={createMeal.isPending}>
@@ -686,7 +686,7 @@ function AddTextItemsForm({
           value={itemsText}
           onChange={(event) => setItemsText(event.target.value)}
           className="min-h-36"
-          placeholder={"200g arroz branco\n200g frango desfiado"}
+          placeholder={"150g alimento principal\n80g acompanhamento"}
         />
       </div>
       <Button

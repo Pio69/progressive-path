@@ -68,7 +68,7 @@ export function AppShell({
           </div>
           <div>
             <div className="text-sm font-semibold leading-none">Progressive Path</div>
-            <div className="mt-1 text-xs text-muted-foreground">Cutting tracker</div>
+            <div className="mt-1 text-xs text-muted-foreground">Monitoramento de saude</div>
           </div>
         </div>
         <nav className="flex flex-col gap-1">

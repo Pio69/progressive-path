@@ -294,7 +294,7 @@ async function handleFoodNutritionSearch(request: Request, env: unknown) {
     const response = await fetch(searchUrl, {
       headers: {
         accept: "application/json",
-        "user-agent": "ProjetoDallas/0.1 (https://example.local)",
+        "user-agent": "ProgressivePath/0.1 (https://example.local)",
       },
     });
 

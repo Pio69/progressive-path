@@ -198,7 +198,7 @@ function Medidas() {
           <Field label="Observacoes">
             <Textarea
               rows={2}
-              placeholder="Jejum, pump pos treino, horario, fita usada..."
+              placeholder="Condicao da medicao, horario, metodo utilizado..."
               value={form.notes}
               onChange={(event) => setForm({ ...form, notes: event.target.value })}
             />
