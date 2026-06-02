@@ -81,6 +81,8 @@ export async function syncDailyLogNutrition(userId: string, date: string): Promi
         log_date: date,
         calories: nutrition.kcal,
         protein_g: nutrition.protein,
+        carbs_g: nutrition.carbs,
+        fat_g: nutrition.fat,
       },
       { onConflict: "user_id,log_date" },
     );
@@ -112,6 +114,8 @@ export async function syncDailyLogNutrition(userId: string, date: string): Promi
       log_date: date,
       calories: null,
       protein_g: null,
+      carbs_g: null,
+      fat_g: null,
     },
     { onConflict: "user_id,log_date" },
   );

@@ -1,6 +1,7 @@
 import { Link, useLocation, Navigate } from "@tanstack/react-router";
 import {
   Activity,
+  BarChart3,
   Home,
   Utensils,
   LineChart,
@@ -17,6 +18,7 @@ import { useProfile } from "@/hooks/use-profile";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
+  { to: "/dashboard", label: "Dash", icon: BarChart3 },
   { to: "/alimentos", label: "Alimentos", icon: Apple },
   { to: "/refeicoes", label: "Refeições", icon: Utensils },
   { to: "/registro", label: "Registro", icon: ClipboardList },

@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { MANUAL_MEAL_ITEM_FOOD_NAME, type Food } from "@/lib/dallas";
@@ -32,6 +32,20 @@ type FormState = {
   fat_per_100g: number;
 };
 
+type FoodNutritionResult = {
+  code: string;
+  name: string;
+  brand: string;
+  quantity: string;
+  imageUrl: string;
+  sourceUrl: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  confidence: "baixa" | "media" | "alta";
+};
+
 const empty: FormState = {
   name: "",
   calories_per_100g: 0,
@@ -45,6 +59,9 @@ function Alimentos() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(empty);
+  const [lookupOpen, setLookupOpen] = useState(false);
+  const [lookupTerm, setLookupTerm] = useState("");
+  const [lookupResults, setLookupResults] = useState<FoodNutritionResult[]>([]);
 
   const { data: foods = [], isLoading } = useQuery({
     queryKey: ["foods", user?.id],
@@ -105,10 +122,43 @@ function Alimentos() {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  const lookupNutrition = useMutation({
+    mutationFn: async (query: string) => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Sessao expirada. Entre novamente.");
+
+      const response = await fetch(
+        `/api/search-food-nutrition?q=${encodeURIComponent(query.trim())}`,
+        {
+          headers: {
+            authorization: `Bearer ${token}`,
+            "x-supabase-url": import.meta.env.VITE_SUPABASE_URL,
+            "x-supabase-key":
+              import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+              import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        },
+      );
+
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Falha ao buscar alimento");
+      return (payload.results ?? []) as FoodNutritionResult[];
+    },
+    onSuccess: (results) => {
+      setLookupResults(results);
+      if (results.length === 0) {
+        toast.info("Nenhum produto com macros completos foi encontrado.");
+      }
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
   function openNew() {
     setForm(empty);
     setOpen(true);
   }
+
   function openEdit(f: Food) {
     setForm({
       id: f.id,
@@ -121,6 +171,25 @@ function Alimentos() {
     setOpen(true);
   }
 
+  function openLookup() {
+    setLookupTerm(form.name);
+    setLookupResults([]);
+    setLookupOpen(true);
+  }
+
+  function applyLookupResult(result: FoodNutritionResult) {
+    setForm({
+      name: formatFoodName(result),
+      calories_per_100g: result.calories_per_100g,
+      protein_per_100g: result.protein_per_100g,
+      carbs_per_100g: result.carbs_per_100g,
+      fat_per_100g: result.fat_per_100g,
+    });
+    setLookupOpen(false);
+    setOpen(true);
+    toast.success("Tabela preenchida. Confira antes de salvar.");
+  }
+
   return (
     <AppShell>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -128,80 +197,184 @@ function Alimentos() {
           <h1 className="text-2xl font-semibold tracking-tight">Alimentos</h1>
           <p className="text-sm text-muted-foreground">Catalogo pessoal com valores por 100g.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openNew} className="rounded-xl">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo alimento
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{form.id ? "Editar alimento" : "Novo alimento"}</DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                save.mutate(form);
-              }}
-              className="space-y-3"
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <Label className="text-xs">Nome</Label>
-                  <Input
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Kcal / 100g</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={form.calories_per_100g}
-                    onChange={(e) => setForm({ ...form, calories_per_100g: +e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Proteina / 100g</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={form.protein_per_100g}
-                    onChange={(e) => setForm({ ...form, protein_per_100g: +e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Carbo / 100g</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={form.carbs_per_100g}
-                    onChange={(e) => setForm({ ...form, carbs_per_100g: +e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Gordura / 100g</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={form.fat_per_100g}
-                    onChange={(e) => setForm({ ...form, fat_per_100g: +e.target.value })}
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="w-full" disabled={save.isPending}>
-                {save.isPending ? "Salvando..." : "Salvar"}
+        <div className="flex flex-wrap gap-2">
+          <Dialog open={lookupOpen} onOpenChange={setLookupOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" onClick={openLookup} className="rounded-xl">
+                <Search className="mr-2 h-4 w-4" />
+                Buscar tabela
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Buscar tabela nutricional</DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  lookupNutrition.mutate(lookupTerm);
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome do produto</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={lookupTerm}
+                      onChange={(event) => setLookupTerm(event.target.value)}
+                      placeholder="Iogurte Tirol Zero"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={lookupNutrition.isPending || lookupTerm.trim().length < 3}
+                    >
+                      <Search className="mr-2 h-4 w-4" />
+                      {lookupNutrition.isPending ? "Buscando..." : "Buscar"}
+                    </Button>
+                  </div>
+                </div>
+
+                {lookupResults.length > 0 && (
+                  <div className="space-y-2">
+                    {lookupResults.map((result) => (
+                      <div
+                        key={result.code}
+                        className="rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/50"
+                      >
+                        <div className="flex gap-3">
+                          {result.imageUrl ? (
+                            <img
+                              src={result.imageUrl}
+                              alt=""
+                              className="h-16 w-16 shrink-0 rounded-lg border border-border object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
+                              <Search className="h-5 w-5" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <h3 className="truncate text-sm font-semibold">{result.name}</h3>
+                                <p className="text-xs text-muted-foreground">
+                                  {[result.brand, result.quantity].filter(Boolean).join(" - ") ||
+                                    "Open Food Facts"}
+                                </p>
+                              </div>
+                              <span className="rounded-full bg-muted px-2 py-1 text-[10px] uppercase text-muted-foreground">
+                                {result.confidence}
+                              </span>
+                            </div>
+                            <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
+                              <Stat label="kcal" value={result.calories_per_100g} />
+                              <Stat label="P" value={result.protein_per_100g} />
+                              <Stat label="C" value={result.carbs_per_100g} />
+                              <Stat label="G" value={result.fat_per_100g} />
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                              <a
+                                href={result.sourceUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary underline-offset-4 hover:underline"
+                              >
+                                Ver fonte
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => applyLookupResult(result)}
+                              >
+                                Usar dados
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew} className="rounded-xl">
+                <Plus className="mr-2 h-4 w-4" />
+                Novo alimento
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{form.id ? "Editar alimento" : "Novo alimento"}</DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  save.mutate(form);
+                }}
+                className="space-y-3"
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Label className="text-xs">Nome</Label>
+                    <Input
+                      required
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Kcal / 100g</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      required
+                      value={form.calories_per_100g}
+                      onChange={(e) => setForm({ ...form, calories_per_100g: +e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Proteina / 100g</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      required
+                      value={form.protein_per_100g}
+                      onChange={(e) => setForm({ ...form, protein_per_100g: +e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Carbo / 100g</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      required
+                      value={form.carbs_per_100g}
+                      onChange={(e) => setForm({ ...form, carbs_per_100g: +e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Gordura / 100g</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      required
+                      value={form.fat_per_100g}
+                      onChange={(e) => setForm({ ...form, fat_per_100g: +e.target.value })}
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={save.isPending}>
+                  {save.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </header>
 
       {isLoading ? (
@@ -261,4 +434,25 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Erro inesperado";
+}
+
+function formatFoodName(result: FoodNutritionResult) {
+  const normalizedName = normalizeText(result.name);
+  const brand = result.brand
+    .split(",")
+    .map((item) => item.trim())
+    .find(Boolean);
+
+  if (!brand || normalizedName.includes(normalizeText(brand))) {
+    return result.name;
+  }
+
+  return `${result.name} - ${brand}`;
+}
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }

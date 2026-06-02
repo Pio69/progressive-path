@@ -102,6 +102,31 @@ type EstimateResponse = {
   }[];
 };
 
+type FoodNutritionResult = {
+  code: string;
+  name: string;
+  brand: string;
+  quantity: string;
+  imageUrl: string;
+  sourceUrl: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  confidence: "baixa" | "media" | "alta";
+};
+
+type OpenFoodFactsProduct = {
+  code?: string | number;
+  product_name?: string;
+  product_name_pt?: string;
+  product_name_br?: string;
+  brands?: string;
+  quantity?: string;
+  image_front_small_url?: string;
+  nutriments?: Record<string, unknown>;
+};
+
 async function handleApiRequest(request: Request, env: unknown) {
   const url = new URL(request.url);
   if (url.pathname === "/api/env-check") {
@@ -127,6 +152,10 @@ async function handleApiRequest(request: Request, env: unknown) {
         .filter((key) => /GEMINI|SUPABASE/i.test(key))
         .sort(),
     });
+  }
+
+  if (url.pathname === "/api/search-food-nutrition") {
+    return await handleFoodNutritionSearch(request, env);
   }
 
   if (url.pathname !== "/api/estimate-meal-macros") return null;
@@ -224,6 +253,68 @@ async function handleApiRequest(request: Request, env: unknown) {
   }
 }
 
+async function handleFoodNutritionSearch(request: Request, env: unknown) {
+  if (request.method !== "GET") {
+    return Response.json({ error: "Metodo nao permitido" }, { status: 405 });
+  }
+
+  const url = new URL(request.url);
+  const query = (url.searchParams.get("q") ?? "").trim();
+  if (query.length < 3) {
+    return Response.json({ error: "Digite pelo menos 3 caracteres" }, { status: 400 });
+  }
+
+  try {
+    const runtimeEnv = getRuntimeEnv(env);
+    await requireAuthenticatedUser(request, runtimeEnv);
+
+    const searchUrl = new URL("https://world.openfoodfacts.org/cgi/search.pl");
+    searchUrl.searchParams.set("search_terms", query);
+    searchUrl.searchParams.set("search_simple", "1");
+    searchUrl.searchParams.set("action", "process");
+    searchUrl.searchParams.set("json", "1");
+    searchUrl.searchParams.set("page_size", "8");
+    searchUrl.searchParams.set("sort_by", "unique_scans_n");
+    searchUrl.searchParams.set("lc", "pt");
+    searchUrl.searchParams.set("cc", "br");
+    searchUrl.searchParams.set(
+      "fields",
+      [
+        "code",
+        "product_name",
+        "product_name_pt",
+        "product_name_br",
+        "brands",
+        "quantity",
+        "image_front_small_url",
+        "nutriments",
+      ].join(","),
+    );
+
+    const response = await fetch(searchUrl, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "ProjetoDallas/0.1 (https://example.local)",
+      },
+    });
+
+    if (!response.ok) {
+      return Response.json(
+        { error: `Open Food Facts retornou HTTP ${response.status}` },
+        { status: 502 },
+      );
+    }
+
+    const payload = (await response.json()) as { products?: OpenFoodFactsProduct[] };
+    const results = normalizeFoodNutritionResults(payload.products ?? [], query);
+    return Response.json({ results });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro inesperado";
+    const status = message === "Nao autenticado" ? 401 : 500;
+    return Response.json({ error: message }, { status });
+  }
+}
+
 async function requireAuthenticatedUser(request: Request, runtimeEnv: Record<string, string>) {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) throw new Error("Nao autenticado");
@@ -311,6 +402,84 @@ function parseGeminiError(body: string) {
   return body
     ? `Gemini retornou erro: ${body.slice(0, 300)}`
     : "Falha ao calcular macros com Gemini";
+}
+
+function normalizeFoodNutritionResults(
+  products: OpenFoodFactsProduct[],
+  query: string,
+): FoodNutritionResult[] {
+  return products
+    .map((product) => normalizeFoodNutritionResult(product, query))
+    .filter((result): result is FoodNutritionResult => Boolean(result))
+    .sort((a, b) => confidenceRank(b.confidence) - confidenceRank(a.confidence))
+    .slice(0, 6);
+}
+
+function normalizeFoodNutritionResult(
+  product: OpenFoodFactsProduct,
+  query: string,
+): FoodNutritionResult | null {
+  const nutriments = product.nutriments ?? {};
+  const calories =
+    parseNutriment(nutriments["energy-kcal_100g"]) ??
+    parseNutriment(nutriments["energy-kcal"]) ??
+    kjToKcal(parseNutriment(nutriments.energy_100g));
+  const protein = parseNutriment(nutriments.proteins_100g);
+  const carbs = parseNutriment(nutriments.carbohydrates_100g);
+  const fat = parseNutriment(nutriments.fat_100g);
+  const code = product.code == null ? "" : String(product.code);
+  const name = product.product_name_pt || product.product_name_br || product.product_name || "";
+
+  if (!code || !name || calories == null || protein == null || carbs == null || fat == null) {
+    return null;
+  }
+
+  return {
+    code,
+    name,
+    brand: product.brands ?? "",
+    quantity: product.quantity ?? "",
+    imageUrl: product.image_front_small_url ?? "",
+    sourceUrl: `https://world.openfoodfacts.org/product/${encodeURIComponent(code)}`,
+    calories_per_100g: clampNumber(calories),
+    protein_per_100g: clampNumber(protein),
+    carbs_per_100g: clampNumber(carbs),
+    fat_per_100g: clampNumber(fat),
+    confidence: estimateFoodSearchConfidence(query, name, product.brands ?? ""),
+  };
+}
+
+function parseNutriment(value: unknown) {
+  const number = typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function kjToKcal(value: number | null) {
+  return value == null ? null : value / 4.184;
+}
+
+function estimateFoodSearchConfidence(query: string, name: string, brand: string) {
+  const haystack = normalizeSearchText(`${name} ${brand}`);
+  const queryWords = normalizeSearchText(query).split(" ").filter(Boolean);
+  if (queryWords.length === 0) return "baixa";
+
+  const matched = queryWords.filter((word) => haystack.includes(word)).length;
+  if (matched === queryWords.length) return "alta";
+  if (matched >= Math.ceil(queryWords.length / 2)) return "media";
+  return "baixa";
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function confidenceRank(confidence: FoodNutritionResult["confidence"]) {
+  return { baixa: 0, media: 1, alta: 2 }[confidence];
 }
 
 function getRuntimeEnv(env: unknown) {

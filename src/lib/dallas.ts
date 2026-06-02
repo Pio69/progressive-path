@@ -25,6 +25,8 @@ export type DailyLog = {
   weight_kg: number | null;
   calories: number | null;
   protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
   water_l: number | null;
   trained: boolean;
   training_start: string | null;
