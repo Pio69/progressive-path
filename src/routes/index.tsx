@@ -118,7 +118,7 @@ function Home() {
               goal={goals.calories}
               unit="kcal"
               icon={Flame}
-              tone="warm"
+              tone="amber"
             />
             <MacroCard
               label="Proteina"
@@ -182,7 +182,7 @@ function Home() {
             value={todayLog?.trained ? "sim" : "nao"}
             icon={Dumbbell}
             to="/registro"
-            tone="warm"
+            tone="primary"
           />
         </section>
 
@@ -314,7 +314,7 @@ function QuickLink({
   );
 }
 
-type Tone = "primary" | "fresh" | "gold" | "warm" | "violet";
+type Tone = "primary" | "fresh" | "gold" | "amber" | "violet";
 
 const TONES: Record<
   Tone,
@@ -341,12 +341,12 @@ const TONES: Record<
     soft: "bg-warning/15 text-warning",
     text: "text-warning",
   },
-  warm: {
-    bar: "bg-destructive",
-    hover: "hover:border-destructive/50",
-    progress: "bg-destructive/20 [&>div]:bg-destructive",
-    soft: "bg-destructive/15 text-destructive",
-    text: "text-destructive",
+  amber: {
+    bar: "bg-orange-400",
+    hover: "hover:border-orange-400/50",
+    progress: "bg-orange-400/20 [&>div]:bg-orange-400",
+    soft: "bg-orange-400/15 text-orange-300",
+    text: "text-orange-300",
   },
   violet: {
     bar: "bg-chart-5",
