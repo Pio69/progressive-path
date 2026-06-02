@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { todayIso, type BodyMeasurement } from "@/lib/dallas";
 
 export const Route = createFileRoute("/medidas")({
-  head: () => ({ meta: [{ title: "Medidas corporais - Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Medidas corporais - Progressive Path" }] }),
   component: Medidas,
 });
 

@@ -67,7 +67,7 @@ export function AppShell({
             <Activity className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-sm font-semibold leading-none">Projeto Dallas</div>
+            <div className="text-sm font-semibold leading-none">Progressive Path</div>
             <div className="mt-1 text-xs text-muted-foreground">Cutting tracker</div>
           </div>
         </div>
@@ -111,7 +111,7 @@ export function AppShell({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Activity className="h-4 w-4" />
           </div>
-          <span className="text-sm font-semibold">Projeto Dallas</span>
+          <span className="text-sm font-semibold">Progressive Path</span>
         </div>
         <button
           onClick={() => signOut()}

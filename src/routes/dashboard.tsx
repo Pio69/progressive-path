@@ -29,7 +29,7 @@ import { useProfile } from "@/hooks/use-profile";
 import type { DailyLog } from "@/lib/dallas";
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard - Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Dashboard - Progressive Path" }] }),
   component: Dashboard,
 });
 

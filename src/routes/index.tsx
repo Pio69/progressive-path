@@ -32,7 +32,7 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Projeto Dallas - Dashboard" },
+      { title: "Progressive Path - Dashboard" },
       { name: "description", content: "Acompanhe calorias, macros e evolucao do seu cutting." },
     ],
   }),

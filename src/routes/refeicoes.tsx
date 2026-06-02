@@ -28,7 +28,7 @@ import { syncDailyLogNutrition } from "@/lib/dallas-data";
 import { calcMacros, sumMacros, todayIso, type Food, type Meal, type MealItem } from "@/lib/dallas";
 
 export const Route = createFileRoute("/refeicoes")({
-  head: () => ({ meta: [{ title: "Refeicoes - Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Refeicoes - Progressive Path" }] }),
   component: Refeicoes,
 });
 

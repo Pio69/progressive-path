@@ -1,4 +1,4 @@
-// Types and helpers for the MVP (Projeto Dallas)
+// Types and helpers for the MVP (Progressive Path)
 
 export type Profile = {
   id: string;

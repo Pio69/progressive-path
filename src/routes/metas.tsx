@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/metas")({
-  head: () => ({ meta: [{ title: "Metas - Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Metas - Progressive Path" }] }),
   component: Metas,
 });
 

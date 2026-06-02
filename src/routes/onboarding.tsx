@@ -18,7 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { todayIso } from "@/lib/dallas";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({ meta: [{ title: "Configuração inicial — Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Configuração inicial — Progressive Path" }] }),
   component: Onboarding,
 });
 
@@ -94,7 +94,7 @@ function Onboarding() {
     <div className="min-h-screen bg-background px-4 py-10">
       <div className="mx-auto max-w-2xl">
         <header className="mb-8 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">Bem-vindo ao Projeto Dallas</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Bem-vindo ao Progressive Path</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Vamos configurar seu perfil e metas para começar.
           </p>

@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { MANUAL_MEAL_ITEM_FOOD_NAME, type Food } from "@/lib/dallas";
 
 export const Route = createFileRoute("/alimentos")({
-  head: () => ({ meta: [{ title: "Alimentos - Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Alimentos - Progressive Path" }] }),
   component: Alimentos,
 });
 

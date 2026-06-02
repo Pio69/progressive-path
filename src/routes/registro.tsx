@@ -23,7 +23,7 @@ import { syncDailyLogNutrition } from "@/lib/dallas-data";
 import { todayIso, type DailyLog } from "@/lib/dallas";
 
 export const Route = createFileRoute("/registro")({
-  head: () => ({ meta: [{ title: "Registro diario - Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Registro diario - Progressive Path" }] }),
   component: Registro,
 });
 

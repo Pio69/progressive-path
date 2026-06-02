@@ -8,7 +8,7 @@ import type { DailyLog } from "@/lib/dallas";
 import { CheckCircle2, AlertTriangle, Info, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/insights")({
-  head: () => ({ meta: [{ title: "Insights - Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Insights - Progressive Path" }] }),
   component: Insights,
 });
 

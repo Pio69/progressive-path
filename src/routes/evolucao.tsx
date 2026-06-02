@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/evolucao")({
-  head: () => ({ meta: [{ title: "Evolucao - Projeto Dallas" }] }),
+  head: () => ({ meta: [{ title: "Evolucao - Progressive Path" }] }),
   component: Evolucao,
 });
 
