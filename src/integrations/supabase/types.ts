@@ -1,394 +1,358 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      body_measurements: {
-        Row: {
-          id: string;
-          user_id: string;
-          measured_at: string;
-          waist_cm: number | null;
-          chest_cm: number | null;
-          arm_cm: number | null;
-          thigh_cm: number | null;
-          notes: string | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          measured_at?: string;
-          waist_cm?: number | null;
-          chest_cm?: number | null;
-          arm_cm?: number | null;
-          thigh_cm?: number | null;
-          notes?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          measured_at?: string;
-          waist_cm?: number | null;
-          chest_cm?: number | null;
-          arm_cm?: number | null;
-          thigh_cm?: number | null;
-          notes?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "body_measurements_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       daily_goals: {
         Row: {
-          id: string;
-          user_id: string;
-          calories: number;
-          protein_g: number;
-          carbs_g: number;
-          fat_g: number;
-          created_at: string | null;
-          updated_at: string | null;
-        };
+          calories: number
+          carbs_g: number
+          created_at: string
+          fat_g: number
+          id: string
+          protein_g: number
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          calories?: number;
-          protein_g?: number;
-          carbs_g?: number;
-          fat_g?: number;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
+          calories: number
+          carbs_g: number
+          created_at?: string
+          fat_g: number
+          id?: string
+          protein_g: number
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          calories?: number;
-          protein_g?: number;
-          carbs_g?: number;
-          fat_g?: number;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      daily_logs: {
-        Row: {
-          id: string;
-          user_id: string;
-          log_date: string;
-          routine_logged: boolean;
-          weight_kg: number | null;
-          calories: number | null;
-          protein_g: number | null;
-          carbs_g: number | null;
-          fat_g: number | null;
-          water_l: number | null;
-          trained: boolean;
-          training_start: string | null;
-          training_end: string | null;
-          training_intensity: string | null;
-          cardio: boolean;
-          sleep_hours: number | null;
-          alcohol: boolean;
-          free_meal: boolean;
-          tags: string[];
-          notes: string | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          log_date?: string;
-          routine_logged?: boolean;
-          weight_kg?: number | null;
-          calories?: number | null;
-          protein_g?: number | null;
-          carbs_g?: number | null;
-          fat_g?: number | null;
-          water_l?: number | null;
-          trained?: boolean;
-          training_start?: string | null;
-          training_end?: string | null;
-          training_intensity?: string | null;
-          cardio?: boolean;
-          sleep_hours?: number | null;
-          alcohol?: boolean;
-          free_meal?: boolean;
-          tags?: string[];
-          notes?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          log_date?: string;
-          routine_logged?: boolean;
-          weight_kg?: number | null;
-          calories?: number | null;
-          protein_g?: number | null;
-          carbs_g?: number | null;
-          fat_g?: number | null;
-          water_l?: number | null;
-          trained?: boolean;
-          training_start?: string | null;
-          training_end?: string | null;
-          training_intensity?: string | null;
-          cardio?: boolean;
-          sleep_hours?: number | null;
-          alcohol?: boolean;
-          free_meal?: boolean;
-          tags?: string[];
-          notes?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
+          calories?: number
+          carbs_g?: number
+          created_at?: string
+          fat_g?: number
+          id?: string
+          protein_g?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       foods: {
         Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          calories_per_100g: number;
-          protein_per_100g: number;
-          carbs_per_100g: number;
-          fat_per_100g: number;
-          created_at: string | null;
-          updated_at: string | null;
-        };
+          brand: string | null
+          carbs_100g: number
+          created_at: string
+          fat_100g: number
+          id: string
+          kcal_100g: number
+          name: string
+          protein_100g: number
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          name: string;
-          calories_per_100g?: number;
-          protein_per_100g?: number;
-          carbs_per_100g?: number;
-          fat_per_100g?: number;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
+          brand?: string | null
+          carbs_100g?: number
+          created_at?: string
+          fat_100g?: number
+          id?: string
+          kcal_100g: number
+          name: string
+          protein_100g?: number
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          name?: string;
-          calories_per_100g?: number;
-          protein_per_100g?: number;
-          carbs_per_100g?: number;
-          fat_per_100g?: number;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "foods_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
+          brand?: string | null
+          carbs_100g?: number
+          created_at?: string
+          fat_100g?: number
+          id?: string
+          kcal_100g?: number
+          name?: string
+          protein_100g?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meal_items: {
         Row: {
-          id: string;
-          user_id: string;
-          meal_id: string;
-          food_id: string | null;
-          quantity_g: number;
-          food_name: string;
-          calories_per_100g: number;
-          protein_per_100g: number;
-          carbs_per_100g: number;
-          fat_per_100g: number;
-          created_at: string | null;
-          updated_at: string | null;
-        };
+          created_at: string
+          food_id: string
+          grams: number
+          id: string
+          meal_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          meal_id: string;
-          food_id?: string | null;
-          quantity_g?: number;
-          food_name: string;
-          calories_per_100g?: number;
-          protein_per_100g?: number;
-          carbs_per_100g?: number;
-          fat_per_100g?: number;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
+          created_at?: string
+          food_id: string
+          grams: number
+          id?: string
+          meal_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          meal_id?: string;
-          food_id?: string | null;
-          quantity_g?: number;
-          food_name?: string;
-          calories_per_100g?: number;
-          protein_per_100g?: number;
-          carbs_per_100g?: number;
-          fat_per_100g?: number;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
+          created_at?: string
+          food_id?: string
+          grams?: number
+          id?: string
+          meal_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "meal_items_food_id_fkey";
-            columns: ["food_id"];
-            isOneToOne: false;
-            referencedRelation: "foods";
-            referencedColumns: ["id"];
+            foreignKeyName: "meal_items_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "foods"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "meal_items_meal_id_fkey";
-            columns: ["meal_id"];
-            isOneToOne: false;
-            referencedRelation: "meals";
-            referencedColumns: ["id"];
+            foreignKeyName: "meal_items_meal_id_fkey"
+            columns: ["meal_id"]
+            isOneToOne: false
+            referencedRelation: "meals"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       meals: {
         Row: {
-          id: string;
-          user_id: string;
-          meal_date: string;
-          meal_type: string;
-          created_at: string | null;
-          updated_at: string | null;
-        };
+          created_at: string
+          date: string
+          id: string
+          name: string
+          notes: string | null
+          time: string | null
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          meal_date?: string;
-          meal_type: string;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
+          created_at?: string
+          date?: string
+          id?: string
+          name: string
+          notes?: string | null
+          time?: string | null
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          meal_date?: string;
-          meal_type?: string;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          date?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
-          id: string;
-          name: string | null;
-          height_cm: number | null;
-          weight_kg: number | null;
-          goal: string | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
+          created_at: string
+          current_weight_kg: number
+          goal: string
+          goal_weight_kg: number
+          height_cm: number
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          id: string;
-          name?: string | null;
-          height_cm?: number | null;
-          weight_kg?: number | null;
-          goal?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
+          created_at?: string
+          current_weight_kg: number
+          goal?: string
+          goal_weight_kg: number
+          height_cm: number
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          id?: string;
-          name?: string | null;
-          height_cm?: number | null;
-          weight_kg?: number | null;
-          goal?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          current_weight_kg?: number
+          goal?: string
+          goal_weight_kg?: number
+          height_cm?: number
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weight_history: {
         Row: {
-          id: string;
-          user_id: string;
-          weight_kg: number;
-          measured_at: string;
-          created_at: string | null;
-        };
+          created_at: string
+          date: string
+          id: string
+          user_id: string
+          weight_kg: number
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          weight_kg: number;
-          measured_at?: string;
-          created_at?: string | null;
-        };
+          created_at?: string
+          date?: string
+          id?: string
+          user_id: string
+          weight_kg: number
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          weight_kg?: number;
-          measured_at?: string;
-          created_at?: string | null;
-        };
-        Relationships: [];
-      };
-    };
-    Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
-    Enums: { [_ in never]: never };
-    CompositeTypes: { [_ in never]: never };
-  };
-};
+          created_at?: string
+          date?: string
+          id?: string
+          user_id?: string
+          weight_kg?: number
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
 
-type DefaultSchema = Database[Extract<keyof Database, "public">];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R;
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R;
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
       }
       ? R
       : never
-    : never;
+    : never
 
-export type TablesInsert<DefaultSchemaTableName extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][DefaultSchemaTableName] extends { Insert: infer I } ? I : never;
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export type TablesUpdate<DefaultSchemaTableName extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][DefaultSchemaTableName] extends { Update: infer U } ? U : never;
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
-export type Enums<DefaultSchemaEnumName extends keyof DefaultSchema["Enums"]> =
-  DefaultSchema["Enums"][DefaultSchemaEnumName];
-export type CompositeTypes<PublicCompositeTypeName extends keyof DefaultSchema["CompositeTypes"]> =
-  DefaultSchema["CompositeTypes"][PublicCompositeTypeName];
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
     Enums: {},
   },
-} as const;
+} as const
