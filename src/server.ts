@@ -87,7 +87,7 @@ export default {
 
 type EstimateRequest = {
   mealName: string;
-  items: { id: string; name: string; grams: number }[];
+  items: { id: string; name: string; grams?: number; quantityText?: string }[];
 };
 
 type EstimateResponse = {
@@ -184,14 +184,14 @@ async function handleApiRequest(request: Request, env: unknown) {
     const prompt = [
       "Voce e um nutricionista assistente especializado em estimar macros de refeicoes em portugues do Brasil.",
       "Estime calorias, proteina, carboidratos e gordura totais consumidos para cada item.",
-      "Use a quantidade em gramas quando existir. Se a descricao for ambigua, estime pelo alimento comum mais provavel no Brasil.",
+      "Use a quantidade informada, seja em gramas ou em qualquer medida textual: ml, unidade, fatia, colher, xicara, scoop, porcao etc. Se a descricao for ambigua, estime pelo alimento comum mais provavel no Brasil.",
       "Retorne apenas dados compativeis com o schema. Nao invente ids.",
       "",
       `Refeicao: ${body.mealName || "Refeicao"}`,
       "Itens:",
       ...items.map(
         (item) =>
-          `- id=${item.id}; quantidade=${item.grams || "nao informada"}g; alimento=${item.name}`,
+          `- id=${item.id}; quantidade=${formatEstimateQuantity(item)}; alimento=${item.name}`,
       ),
     ].join("\n");
 
@@ -313,6 +313,14 @@ async function handleFoodNutritionSearch(request: Request, env: unknown) {
     const status = message === "Nao autenticado" ? 401 : 500;
     return Response.json({ error: message }, { status });
   }
+}
+
+function formatEstimateQuantity(item: EstimateRequest["items"][number]) {
+  const quantityText = item.quantityText?.trim();
+  if (quantityText) return quantityText;
+
+  const grams = Number(item.grams);
+  return Number.isFinite(grams) && grams > 0 ? `${grams}g` : "descrita no alimento";
 }
 
 async function requireAuthenticatedUser(request: Request, runtimeEnv: Record<string, string>) {

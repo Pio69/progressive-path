@@ -99,6 +99,24 @@ export function calcMacros(
   };
 }
 
+export function effectiveMealItemQuantityG(
+  item: Pick<
+    MealItem,
+    "quantity_g" | "calories_per_100g" | "protein_per_100g" | "carbs_per_100g" | "fat_per_100g"
+  >,
+) {
+  const grams = Number(item.quantity_g);
+  if (Number.isFinite(grams) && grams > 0) return grams;
+
+  const hasEstimatedMacros =
+    Number(item.calories_per_100g) > 0 ||
+    Number(item.protein_per_100g) > 0 ||
+    Number(item.carbs_per_100g) > 0 ||
+    Number(item.fat_per_100g) > 0;
+
+  return hasEstimatedMacros ? 100 : 0;
+}
+
 export function sumMacros(items: Macros[]): Macros {
   return items.reduce(
     (acc, m) => ({

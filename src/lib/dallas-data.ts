@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
   calcMacros,
+  effectiveMealItemQuantityG,
   sumMacros,
   type DailyLog,
   type Macros,
@@ -68,7 +69,7 @@ export async function getDayNutrition(userId: string, date: string): Promise<Mac
   const measuredItems = items.filter(itemHasMacroData);
   if (measuredItems.length === 0) return null;
 
-  return sumMacros(measuredItems.map((item) => calcMacros(item, Number(item.quantity_g))));
+  return sumMacros(measuredItems.map((item) => calcMacros(item, effectiveMealItemQuantityG(item))));
 }
 
 export async function syncDailyLogNutrition(userId: string, date: string): Promise<Macros | null> {

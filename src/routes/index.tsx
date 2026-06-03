@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import {
   calcMacros,
+  effectiveMealItemQuantityG,
   sumMacros,
   todayIso,
   type DailyLog,
@@ -80,7 +81,7 @@ function Home() {
   }, []);
 
   const totals = sumMacros(
-    meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it, Number(it.quantity_g)))),
+    meals.flatMap((m) => m.meal_items.map((it) => calcMacros(it, effectiveMealItemQuantityG(it)))),
   );
   const weight = profile?.weight_kg == null ? null : Number(profile.weight_kg);
 

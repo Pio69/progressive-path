@@ -25,7 +25,15 @@ import { Plus, Sparkles, Trash2, Pencil, Apple } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { syncDailyLogNutrition } from "@/lib/dallas-data";
-import { calcMacros, sumMacros, todayIso, type Food, type Meal, type MealItem } from "@/lib/dallas";
+import {
+  calcMacros,
+  effectiveMealItemQuantityG,
+  sumMacros,
+  todayIso,
+  type Food,
+  type Meal,
+  type MealItem,
+} from "@/lib/dallas";
 
 export const Route = createFileRoute("/refeicoes")({
   head: () => ({ meta: [{ title: "Refeicoes - Progressive Path" }] }),
@@ -266,6 +274,7 @@ function Refeicoes() {
             id: item.id,
             name: item.food_name,
             grams: Number(item.quantity_g),
+            quantityText: mealItemQuantityText(item),
           })),
         }),
       });
@@ -278,9 +287,10 @@ function Refeicoes() {
         estimates.map((item) => {
           const original = meal.meal_items.find((mealItem) => mealItem.id === item.id);
           const grams = Number(original?.quantity_g ?? 0);
-          if (!original || grams <= 0) return Promise.resolve();
+          if (!original) return Promise.resolve();
 
-          const factor = 100 / grams;
+          const hasGrams = Number.isFinite(grams) && grams > 0;
+          const factor = hasGrams ? 100 / grams : 1;
           return supabase
             .from("meal_items")
             .update({
@@ -314,7 +324,7 @@ function Refeicoes() {
 
   const totals = sumMacros(
     meals.flatMap((meal) =>
-      meal.meal_items.map((item) => calcMacros(item, Number(item.quantity_g))),
+      meal.meal_items.map((item) => calcMacros(item, effectiveMealItemQuantityG(item))),
     ),
   );
 
@@ -371,7 +381,7 @@ function Refeicoes() {
                   <Textarea
                     name="items"
                     className="min-h-36"
-                    placeholder={"150g alimento principal\n80g acompanhamento"}
+                    placeholder={"1 fatia pao de forma\n80g frango\n200ml leite"}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={createMeal.isPending}>
@@ -398,7 +408,7 @@ function Refeicoes() {
         ) : (
           meals.map((meal) => {
             const mealMacros = sumMacros(
-              meal.meal_items.map((item) => calcMacros(item, Number(item.quantity_g))),
+              meal.meal_items.map((item) => calcMacros(item, effectiveMealItemQuantityG(item))),
             );
             return (
               <article key={meal.id} className="rounded-2xl border border-border bg-card p-5">
@@ -448,7 +458,7 @@ function Refeicoes() {
 
                 <ul className="mt-3 space-y-1.5">
                   {meal.meal_items.map((item) => {
-                    const macros = calcMacros(item, Number(item.quantity_g));
+                    const macros = calcMacros(item, effectiveMealItemQuantityG(item));
                     return (
                       <li
                         key={item.id}
@@ -457,7 +467,7 @@ function Refeicoes() {
                         <div className="min-w-0">
                           <div className="truncate font-medium">{item.food_name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {Number(item.quantity_g)}g
+                            {mealItemQuantityLabel(item)}
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2 text-xs">
@@ -686,7 +696,7 @@ function AddTextItemsForm({
           value={itemsText}
           onChange={(event) => setItemsText(event.target.value)}
           className="min-h-36"
-          placeholder={"150g alimento principal\n80g acompanhamento"}
+          placeholder={"1 fatia pao de forma\n80g frango\n200ml leite"}
         />
       </div>
       <Button
@@ -798,6 +808,27 @@ function parseMealItems(text: string) {
       return { grams: Number(match[1].replace(",", ".")), name: match[2].trim() };
     })
     .filter((item) => item.name.length > 0);
+}
+
+function mealItemQuantityText(item: Pick<MealItem, "food_name" | "quantity_g" | "food_id">) {
+  const grams = Number(item.quantity_g);
+  return Number.isFinite(grams) && grams > 0 ? `${grams}g` : item.food_name;
+}
+
+function mealItemQuantityLabel(
+  item: Pick<
+    MealItem,
+    | "quantity_g"
+    | "calories_per_100g"
+    | "protein_per_100g"
+    | "carbs_per_100g"
+    | "fat_per_100g"
+  >,
+) {
+  const grams = Number(item.quantity_g);
+  if (Number.isFinite(grams) && grams > 0) return `${grams}g`;
+
+  return effectiveMealItemQuantityG(item) > 0 ? "Porcao estimada" : "Quantidade a estimar";
 }
 
 function Total({ label, value, unit }: { label: string; value: number; unit: string }) {
